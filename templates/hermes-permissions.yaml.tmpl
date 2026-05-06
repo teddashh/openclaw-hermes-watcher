@@ -1,0 +1,142 @@
+# hermes-permissions.yaml — ${MACHINE_NAME}
+#
+# Hermes's allowed and forbidden scope, plus the change budget.
+# This is policy, not the hard floor — for the hard floor see baseline.policy.yaml.
+# This file IS chattr +i alongside baseline, but is meant to be edited more often
+# than baseline.policy.yaml (e.g., when adjusting change budget after observing usage).
+#
+# Read by: openclaw main agent (during pack verification),
+#          hermes-maintainer subagent (when running periodic checks).
+#          (Note: change-budget tier counters are tracked by main agent, NOT
+#           watcher. Watcher is pure deterministic immutability/hash check.)
+#
+# Hermes itself sees a SUMMARY of this file rendered into its system prompt;
+# the summary lives at ~/hermes-maintainer/.openclaw-ws/study-notes/hermes-permissions-summary.md
+# (NOT chattr +i; regenerated from this source whenever this file changes).
+
+schema_version: 1
+generated_at: TBD
+last_reviewed_by: ${OPERATOR_HANDLE}
+last_reviewed_at: TBD
+
+# ---------------------------------------------------------------------------
+# What Hermes IS allowed to do (its real job).
+# ---------------------------------------------------------------------------
+hermes_may:
+  read:
+    # Hermes's window into OpenClaw — read-only
+    - ~/.openclaw/                                       # the entire OpenClaw state, RO
+    - /usr/lib/node_modules/openclaw/                    # installed code, RO
+    - ~/.openclaw/workspace/MACHINE_LOG.md
+    - ~/.openclaw/workspace/MACHINE_MAP.md
+    - ~/.openclaw/workspace/DEVIATIONS.md
+    - ~/.openclaw/workspace/openclaw-local-diff.md
+    - ~/.openclaw/workspace/baseline/machine-mission.md
+    - ~/.openclaw/workspace/evolution-journal.jsonl
+
+    # Per-workspace MACHINE_LOG entries Hermes may need to understand impact
+    - ~/hermes-maintainer/.openclaw-ws/MACHINE_LOG.md
+    # (Add other subagent workspace logs here if you want Hermes to see them.)
+
+    # Upstream watching — fetched via gh CLI which has its own auth
+    - github.com/openclaw/openclaw                       # via gh, releases/issues/diffs
+    - github.com/NousResearch/hermes-agent               # for self-awareness during major bumps
+
+  write:
+    # Hermes writes only to its own profile space + the upgrade-pack inbox
+    - ~/.hermes/sessions/openclaw-evolution/             # SQLite + FTS5 session DB
+    - ~/.hermes/profiles/openclaw-evolution/             # SOUL.md, etc.
+    - ~/.hermes/skills/                                  # generated skills (global registry)
+    - ~/.hermes/heartbeats/                              # daily-study heartbeat (Phase 2.5)
+    - ~/.openclaw/workspace/upgrade-packs/inbox/         # the drop dir
+
+  invoke:
+    - hermes_internal_*                                  # delegate, /compress, /insights, /skills
+    - filesystem_read                                    # bounded by the read: list above
+    - filesystem_write                                   # bounded by the write: list above
+    - gh_cli_readonly                                    # gh repo view, gh release view, etc.
+    - shell_run_in_hermes_workspace                      # commands within ~/.hermes/ only
+
+# ---------------------------------------------------------------------------
+# What Hermes is NOT allowed to do.
+# ---------------------------------------------------------------------------
+hermes_may_not:
+  write:
+    - ~/.openclaw/                                       # never write to OpenClaw state directly
+    - /etc/                                              # OS config — main may, Hermes never
+    - /usr/                                              # installed code
+    - ~/.openclaw/workspace/baseline/                    # baseline is operator-only
+    - ~/.openclaw/workspace/evolution-journal.jsonl      # only main may write
+    - ~/.openclaw/openclaw.json                          # only via openclaw config set, by main
+    - ~/.hermes/.env                                     # API keys — operator only
+    - ~/.ssh/
+
+  invoke:
+    - sudo                                               # never
+    - apt / pacman / yum                                 # no system pkg installs
+    - systemctl                                          # no service control
+    - docker                                             # no container ops
+    - gh_cli_write                                       # no PRs/issues/comments via Hermes
+    - openclaw_*                                         # cannot drive OpenClaw directly; talks via journal/inbox
+    - any_command_outside_hermes_workspace               # Hermes's shell tool is scoped to ~/.hermes/
+    # Phase 2 (Hermes own gateway): if you enabled it, autonomous Telegram push remains
+    # forbidden by SOUL.md — the gateway is for replies to operator messages, not for
+    # Hermes to ping autonomously. Cross-patrol cron alerts use a separate mechanism
+    # (heartbeat-patrol script + the maintainer's bot), not Hermes's gateway.
+
+  spawn:
+    - shell_subprocess_outside_hermes                    # Hermes's delegate is in-process; cannot fork shells
+    - new_systemd_unit                                   # never
+
+  modify:
+    - own_permissions                                    # cannot edit this very file
+    - hermes_permissions_summary                         # auto-generated, not editable
+    - hard_baseline                                      # see forbidden_actions
+    - watcher_unit_or_script                             # see forbidden_actions
+
+# ---------------------------------------------------------------------------
+# CHANGE BUDGET — how many proposals Hermes can stack up per week, by tier.
+# Main agent counts applied packs and rejects new ones above the limit.
+# ---------------------------------------------------------------------------
+change_budget:
+  per_week:
+    low_risk: 5
+    medium_risk: 2
+    high_risk: 1
+    forbidden_autonomous: 0
+
+  per_day:
+    low_risk: 2
+    medium_risk: 1
+    high_risk: 1
+    forbidden_autonomous: 0
+
+  reset_at:
+    timezone: ${TZ_NAME}
+    weekday: monday
+    hour: 0
+
+  tier_examples:
+    low_risk:
+      - dependency_patches
+      - doc_sync
+      - skill_metadata_fix
+      - openclaw_minor_dot_z_bump
+    medium_risk:
+      - openclaw_minor_y_bump
+      - mcp_adapter
+      - workspace_tool_migration
+      - new_skill_added
+    high_risk:
+      - plugin_runtime_change
+      - permission_model_change
+      - cron_schedule_change
+      - new_systemd_unit
+    forbidden_autonomous:
+      - hermes_update
+      - openclaw_major_x_bump
+      - hermes_major_version
+      - baseline_policy_change
+      - watcher_change
+      - revoke_subagent
+      - rotate_api_key

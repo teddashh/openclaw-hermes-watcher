@@ -1,0 +1,70 @@
+# ~/.config/systemd/user/openclaw-watcher.service
+#
+# Periodic baseline sentinel for OpenClaw + Hermes deployment on __MACHINE_NAME__.
+# See https://github.com/teddashh/openclaw-hermes-watcher (or your fork) for the
+# design rationale; in particular ARCHITECTURE.md and docs/PHASE-2.5-HEARTBEAT.md.
+#
+# Runs as the same Linux user as openclaw-gateway, but:
+#   - reads baseline files that are chattr +i (cannot tamper)
+#   - writes only to evolution-journal.jsonl (append-only)
+#   - cannot escalate (NoNewPrivileges, ProtectSystem=strict)
+
+[Unit]
+Description=OpenClaw Watcher — baseline sentinel for __MACHINE_NAME__
+Documentation=https://github.com/teddashh/openclaw-hermes-watcher#readme
+
+# After= for boot ordering only. Do NOT use PartOf= — PartOf would tie the
+# watcher's lifecycle to the gateway, meaning stopping the gateway would
+# also stop the watcher. The watcher must run INDEPENDENTLY so that when
+# the gateway crashes or is killed, the watcher is still alive to emit
+# `openclaw_gateway_not_running` events.
+After=openclaw-gateway.service
+
+[Service]
+Type=simple
+ExecStart=__HOME__/.openclaw/workspace/baseline/watcher.sh
+Restart=on-failure
+RestartSec=30s
+
+# Environment
+Environment="BASELINE_DIR=__HOME__/.openclaw/workspace/baseline"
+Environment="JOURNAL=__HOME__/.openclaw/workspace/evolution-journal.jsonl"
+Environment="INTERVAL_SEC=60"
+
+# Hardening — limited to what systemd USER services can actually do.
+#
+# Removed (require system service / CAP_SYS_ADMIN — fail with status=218/
+# CAPABILITIES on user units): ProtectKernelTunables, ProtectKernelModules,
+# ProtectControlGroups, LockPersonality, MemoryDenyWriteExecute,
+# RestrictNamespaces. Defense in depth here is at the policy + filesystem
+# layers (chattr +i, sudo restrictions), not at kernel-namespace level.
+#
+# Kept (work in user mode):
+#   ProtectSystem=strict — read-only mount of /usr, /boot, /efi
+#   ReadOnlyPaths/ReadWritePaths — explicit per-path access control
+#   NoNewPrivileges=true — disables setuid/setcap escalation
+#   PrivateTmp=true — separate /tmp, /var/tmp namespace
+#   RestrictAddressFamilies — limits socket families the script can use
+#
+# NOTE: telemetry-queue path NOT in ReadWritePaths — that's a future
+# Phase 3 unit. Adding a non-existent path here makes systemd refuse to
+# start the watcher.
+ProtectSystem=strict
+ReadOnlyPaths=__HOME__/.openclaw/workspace/baseline
+ReadWritePaths=__HOME__/.openclaw/workspace/evolution-journal.jsonl
+NoNewPrivileges=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Resource limits
+LimitNOFILE=4096
+TasksMax=16
+MemoryMax=128M
+
+# Logging to journald (in addition to its own JSONL output)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openclaw-watcher
+
+[Install]
+WantedBy=default.target

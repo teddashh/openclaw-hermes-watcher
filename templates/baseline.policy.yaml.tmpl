@@ -1,0 +1,211 @@
+# baseline.policy.yaml — ${MACHINE_NAME}
+#
+# This file enforces the hard floor on what agents may do.
+# Modifying it requires `sudo chattr -i` on the host (see scripts/edit-baseline.sh).
+#
+# Companion files in ~/.openclaw/workspace/baseline/:
+#   - machine-mission.md       — what this machine is for
+#   - hermes-permissions.yaml  — Hermes's allowed/denied scope
+#   - watcher.sh               — periodic sentinel
+#   - .expected-hashes         — sha256 fingerprints of all the above
+#
+# Source of truth: openclaw-hermes-watcher template repo. Render this file
+# from templates/baseline.policy.yaml.tmpl via scripts/01-render-baseline.sh.
+
+schema_version: 1
+generated_at: TBD
+last_reviewed_by: ${OPERATOR_HANDLE}
+last_reviewed_at: TBD
+
+# ---------------------------------------------------------------------------
+# IMMUTABLE PATHS — files no agent may write to.
+# Enforcement: filesystem (chattr +i where applicable) + main agent pre-apply
+# check + watcher periodic verification.
+# ---------------------------------------------------------------------------
+immutable_paths:
+  # System & OS config — NOT bulk /etc/. Main agent owns specific files
+  # (allow_write_for_main below); the rest of /etc/ is sacred.
+  - /etc/passwd
+  - /etc/shadow
+  - /etc/sudoers
+  - /etc/sudoers.d/
+  - /etc/ssh/sshd_config
+  - /etc/group
+  - /etc/hosts
+  - /etc/resolv.conf
+  - /etc/fstab
+  - /etc/cron.*/                                         # system cron (we use OpenClaw cron)
+  - /etc/iptables/
+
+  # System logs — read-only for analysis, no agent should write
+  - /var/log/
+
+  # Installed agent code (managed by package manager / hermes update)
+  - /usr/lib/node_modules/openclaw/
+
+  # Secrets & keys (operator only)
+  - ~/.hermes/.env                                       # Hermes API tokens
+  - ~/.openclaw/.env                                     # OpenClaw secrets if any
+  - ~/.ssh/
+  - ~/.gnupg/
+
+  # Baseline itself (this directory; chattr +i at deploy time)
+  - ~/.openclaw/workspace/baseline/
+
+# Paths the main agent IS allowed to write, despite living under
+# infrastructure dirs. Hermes still cannot write any of these (Hermes write
+# scope is bounded to ~/.hermes/ and the upgrade-pack inbox).
+#
+# Add per-service paths here if your project subagents (doom, web-app, etc.)
+# need to manage their own systemd units, configs, etc.
+allow_write_for_main:
+  - /etc/caddy/Caddyfile                                 # if you use Caddy
+  - /etc/caddy/conf.d/
+  - /etc/systemd/system/openclaw-*.service               # our own units
+  - /etc/systemd/system/hermes-*.service                 # Phase 2 units
+  - /etc/tinyproxy/tinyproxy.conf                        # outbound proxy
+
+# ---------------------------------------------------------------------------
+# FORBIDDEN ACTIONS — things no agent may ever do, even with budget.
+# ---------------------------------------------------------------------------
+
+forbidden_actions:
+  # Self-preservation
+  - id: disable_watcher
+    description: Cannot stop, disable, or modify openclaw-watcher.service or its script
+    enforced_by: [main_pre_apply]
+    todo_implement: cross_unit_liveness_check
+
+  - id: remove_baseline
+    description: Cannot delete or truncate any file under ~/.openclaw/workspace/baseline/
+    enforced_by: [filesystem, watcher]
+
+  - id: chattr_minus_i
+    description: Cannot run chattr -i on protected files (operator only via sudo)
+    enforced_by: [filesystem, watcher]
+
+  # Credentials
+  - id: modify_credentials
+    description: API keys, OAuth tokens, .env files — read-only to all agents
+    enforced_by: [filesystem]
+    todo_implement: log_token_pattern_grep
+
+  - id: log_credential_value
+    description: Even reading a credential's value into a log line is forbidden
+    enforced_by: [main_pre_apply]
+    todo_implement: log_token_pattern_grep
+
+  # Network & isolation
+  - id: open_firewall_port_to_public
+    description: No iptables changes, no cloud-provider security list changes via CLI
+    enforced_by: [main_pre_apply]
+    todo_implement: cli_audit_and_iptables_diff
+
+  # Cross-workspace
+  - id: cross_workspace_write
+    description: A subagent may not write outside its own workspace dir. Cross-project work goes through main.
+    enforced_by: [main_pre_apply]
+    todo_implement: subagent_action_audit
+
+  # Versions & rollback
+  - id: downgrade_openclaw_below
+    value: "${KNOWN_GOOD_OPENCLAW_VERSION}"
+    description: Known-good version. Downgrades below this require ${OPERATOR_HANDLE} explicit approval.
+    enforced_by: [main_pre_apply]
+
+  - id: delete_evolution_journal
+    description: Append-only. Truncation, removal, or rewrite forbidden. Rotation done by trusted weekly cron only.
+    enforced_by: [main_pre_apply]
+    todo_implement: journal_size_monotonic_check
+
+  - id: delete_snapshot_within_grace_period
+    description: Rollback snapshots are kept for 4 packs + 30 days minimum
+    enforced_by: [main_pre_apply]
+    todo_implement: snapshot_dir_age_check
+
+  # Duplicate authority
+  - id: spawn_unauthorized_subagent
+    description: New subagents must be registered via `openclaw agents add`, not by writing config directly
+    enforced_by: [main_pre_apply]
+    todo_implement: openclaw_agents_list_drift_check
+
+# ---------------------------------------------------------------------------
+# REQUIRE_APPROVAL — things that need ${OPERATOR_HANDLE} to say yes, but are not forever-forbidden.
+# Main agent queues these with status=pending_approval; pings via journal+telemetry.
+# ---------------------------------------------------------------------------
+require_approval:
+  - id: upgrade_openclaw_major_version
+    description: vN.x → v(N+1).x bumps. Manual approval each time.
+
+  - id: upgrade_hermes_major_version
+    description: Same for Hermes. New majors often have schema migrations.
+
+  - id: enable_hermes_messaging_gateway
+    description: Phase 2 transition. ${OPERATOR_HANDLE} must say yes and provide a Telegram bot token.
+
+  - id: add_new_telegram_bot
+    description: Beyond the bots configured in machine.env at install time
+
+  - id: mass_data_modification
+    description: Any change touching >10 files in user-data dirs
+    threshold: 10
+
+  - id: modify_within_immutable_paths
+    description: When ${OPERATOR_HANDLE} explicitly wants to change something on the immutable_paths list (procedure: scripts/edit-baseline.sh)
+
+  - id: change_telemetry_endpoint
+    description: Changing where dashboard telemetry goes. ${OPERATOR_HANDLE} only.
+
+# ---------------------------------------------------------------------------
+# VERSION PINS — what hermes-maintainer should treat as known-good.
+# ---------------------------------------------------------------------------
+known_good:
+  openclaw_version: "${KNOWN_GOOD_OPENCLAW_VERSION}"
+  hermes_version: "${KNOWN_GOOD_HERMES_VERSION}"
+  node_version: "${KNOWN_GOOD_NODE_VERSION}"
+  python_version: "${KNOWN_GOOD_PYTHON_VERSION}"
+
+# ---------------------------------------------------------------------------
+# Managed paths — paths that ARE expected to change, just only via documented flows.
+# ---------------------------------------------------------------------------
+managed_paths:
+  - path: ~/.hermes/hermes-agent/
+    managed_by: hermes update
+    detect_change: hermes_version
+
+  - path: /usr/lib/node_modules/openclaw/
+    managed_by: openclaw upgrade
+    detect_change: openclaw_version
+
+  - path: ~/.openclaw/openclaw.json
+    managed_by: openclaw config set
+    detect_change: file_hash
+
+  - path: ~/.openclaw/workspace/evolution-journal.jsonl
+    managed_by: append_only
+    detect_change: monotonic_size
+
+  - path: ~/.hermes/sessions/openclaw-evolution/
+    managed_by: hermes itself
+    detect_change: not_tracked
+
+  # Phase 2.5 cross-patrol heartbeat infrastructure (deterministic dead-man switch).
+  - path: ~/.local/bin/heartbeat-patrol
+    managed_by: scripts/06-cron-setup.sh
+    detect_change: file_hash
+
+  - path: ~/.config/heartbeat-patrol.env
+    managed_by: operator                 # bot token + chat_id (chmod 600, gitignored)
+    detect_change: not_tracked
+
+  - path: ~/.openclaw/workspace/heartbeats/
+    managed_by: maintainer crons
+    detect_change: monotonic_mtime
+
+  - path: ~/.hermes/heartbeats/
+    managed_by: hermes daily-study cron
+    detect_change: monotonic_mtime
+
+  - path: ~/.openclaw/workspace/upgrade-packs/inbox/
+    managed_by: hermes itself
+    detect_change: monotonic_count

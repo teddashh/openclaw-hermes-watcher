@@ -1,0 +1,20 @@
+# Per-machine config (contains bot tokens, operator identity, machine name).
+# Forks/users keep their own; upstream stays generic.
+config/machine.env
+config/heartbeat-patrol.env
+
+# Operator-specific PII pattern list (literals like real names, emails, bot
+# tokens, machine IPs). Stays on the operator's machine; never committed.
+# See tests/.pii-patterns.local.example for format.
+tests/.pii-patterns.local
+
+# Rendered output (not source of truth — regenerated each install).
+*.rendered
+.render-cache/
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/

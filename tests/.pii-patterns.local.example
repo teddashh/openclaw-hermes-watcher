@@ -1,0 +1,17 @@
+# tests/.pii-patterns.local — operator-specific PII patterns to grep for.
+#
+# Copy this file to tests/.pii-patterns.local (gitignored) and add YOUR own
+# private identifiers — strings that should never accidentally appear in
+# committed files because they leak who you are or what host this is.
+#
+# Format: one pattern per line. Lines starting with # are comments. Patterns
+# are matched case-insensitively against every tracked file via grep -RinE.
+#
+# Examples (replace with your own; do NOT commit this file with real values):
+#   YourFullName
+#   yourname@example\.com
+#   your-machine-hostname
+#   192\.0\.2\.42                     # your machine IP
+#   1234567890                        # your Telegram user ID
+#   1234567890:[A-Za-z0-9_-]{30,}     # your Telegram bot token prefix
+#   your_bot_username

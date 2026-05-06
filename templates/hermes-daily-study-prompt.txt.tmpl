@@ -1,0 +1,59 @@
+You are running your daily focused study for openclaw/openclaw upstream.
+
+================================================================
+STEP 0 - establish today's UTC day-of-week
+================================================================
+Before you do anything else, invoke your shell tool to run exactly:
+  date -u +%A
+The output is one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday.
+That value tells you which rotation slot to pick in STEP 3.
+Do NOT assume the day from prior session memory or any other source —
+the cron may have fired late, time may have skipped, etc. Run the command.
+
+================================================================
+STEP 1 - write heartbeat FIRST, before any other work
+================================================================
+Use filesystem_write or patch or write_file - NOT shell, your shell sandbox is jailed. Overwrite the file at:
+  ${HOME}/.hermes/heartbeats/hermes_daily_study.last
+With content, single line, no trailing extra newlines:
+  CURRENT_ISO_TIMESTAMP interval=24h grace=6h job=hermes_daily_study
+Substitute the literal current timestamp like 2026-05-06T01:23:45+00:00. This must succeed regardless of whether downstream steps complete.
+
+================================================================
+STEP 2 - patrol maintainer heartbeats
+================================================================
+Read these four files via filesystem_read:
+  ${HOME}/.openclaw/workspace/heartbeats/hermes_daily_doctor.last       limit 30h
+  ${HOME}/.openclaw/workspace/heartbeats/hermes_upstream_watch.last     limit 30h
+  ${HOME}/.openclaw/workspace/heartbeats/hermes_weekly_review.last      limit 192h
+  ${HOME}/.openclaw/workspace/heartbeats/hermes_monthly_compress.last   limit 792h
+Each file format: ISO_TIMESTAMP interval=Nh grace=Nh job=NAME. Parse the timestamp, compute now minus timestamp in hours.
+If any peer age exceeds its limit, alert. The configured operator chat ID is: "${OPERATOR_TELEGRAM_USER_ID}". If that string is empty or looks invalid, DO NOT attempt to send Telegram — instead append a one-line alert summary to ${HOME}/.hermes/heartbeats/_alerts.log. If the chat ID is a numeric string, send a Telegram message to that chat via your gateway listing the stale jobs.
+If none stale, do nothing for patrol.
+
+================================================================
+STEP 3 - todays study task, skip if already done today
+================================================================
+Use the day-of-week from STEP 0. First check ${HOME}/.hermes/memories/MEMORY.md for a heading already containing the current YYYY-MM-DD date like "### 2026-05-06". If one exists for todays rotation theme, skip step 3 entirely and move to step 4.
+
+Otherwise, by the day-of-week from STEP 0:
+- Monday: scan upstream commits past 7 days. Append to MEMORY.md under "## YYYY-MM-DD Upstream pulse".
+- Tuesday: deep-read one OpenClaw subsystem you have NOT studied in 14 days. Append to MEMORY.md "## Subsystem map".
+- Wednesday: review issues and PRs themes. Append to MEMORY.md "## Upstream themes".
+- Thursday: self-correct. Re-read SOUL.md, MEMORY.md, ${HOME}/.openclaw/workspace/openclaw-local-diff.md. Prune outdated. Promote patterns to skills.
+- Friday: pack-readiness on ${HOME}/.openclaw/workspace/upgrade-packs/inbox/. Write summary.md plus rollback-plan.md when ready.
+- Saturday: Hermes self-awareness. Note approaching major bumps in MEMORY.md.
+- Sunday: rest.
+
+CONSTRAINTS:
+- Step 3 budget: at most 30 minutes or 30 turns. Stay focused.
+- Output goes to FILES. No autonomous Telegram push, except the patrol alert in step 2 which is a triggered safety alert, not autonomous.
+- Questions for ${OPERATOR_HANDLE} go to ${HOME}/.openclaw/workspace/upgrade-packs/inbox/_questions-for-operator.md.
+- Drafts only - never apply outside the inbox.
+
+If gh CLI is not authenticated, fall back to the public GitHub REST API.
+
+================================================================
+STEP 4 - report
+================================================================
+Reply with a brief summary of what you did this run.

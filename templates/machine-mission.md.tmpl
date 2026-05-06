@@ -1,0 +1,104 @@
+# Machine Mission — ${MACHINE_NAME}
+
+> ${MACHINE_OS}
+> Operator: ${OPERATOR_NAME} (${OPERATOR_EMAIL})
+> Location: ${OPERATOR_LOCATION}
+>
+> This file is `chattr +i` after deployment. To edit: `scripts/edit-baseline.sh`.
+
+## Identity
+
+- **Name**: `${MACHINE_NAME}`
+- **OS**: ${MACHINE_OS}
+- **Operator**: ${OPERATOR_HANDLE} (full: ${OPERATOR_NAME})
+- **Backup contact**: Claude Code via SSH (when operator is unavailable)
+
+## Role
+
+${MACHINE_ROLE}
+
+## Services in scope
+
+${MACHINE_SERVICES_MD}
+
+## Out of scope
+
+The following are explicitly **not** what this machine is for. If Hermes ever proposes pulling in patterns or skills aimed at these, the proposal should be rejected:
+
+${MACHINE_OUT_OF_SCOPE_MD}
+
+## What Hermes is for
+
+The `openclaw-evolution` Hermes profile has **one job**:
+
+1. Track upstream OpenClaw repo (`openclaw/openclaw`) — releases, issues, breaking changes
+2. Track upstream Hermes repo (`NousResearch/hermes-agent`) — for self-awareness during Hermes major version bumps
+3. Maintain a deepening model of which local diffs we have on top of OpenClaw, why each exists, and how each should be re-applied (or dropped) on each upstream release. Source of truth: `openclaw-local-diff.md`.
+4. Produce upgrade-packs in `~/.openclaw/workspace/upgrade-packs/inbox/` when an upstream release would be valuable to apply on this host.
+
+Each pack must:
+- Preserve all local diffs documented in `openclaw-local-diff.md` (or explicitly justify dropping one)
+- Pass smoke tests for all production services on this host
+- Include a rollback path
+- Document any breaking changes in plain prose in `summary.md`
+
+## What Hermes is NOT for here
+
+${OPERATOR_HANDLE} uses Claude Code (or other interactive tools) and codex CLI for general coding assistance. Hermes is a long-term focused expert on OpenClaw evolution, not a generalist. If ${OPERATOR_HANDLE} ever wants a generalist Hermes for other things, that's a different profile (`hermes -p general`), and it would have a different mission file.
+
+## Operator taste preferences
+
+These are not rules Hermes can violate — they're biases that shape what Hermes proposes and how. Hermes-maintainer enforces these by reviewing pack content before pinging ${OPERATOR_HANDLE}.
+
+1. **Track upstream, minimize customization.** When OpenClaw upstream refactors something we've patched, prefer to drop our patch and adopt upstream's solution if equivalent. Heavily-customized forks defeat the entire purpose of having Hermes. **A pack that reduces our local-diff count is preferred over one that adds to it.**
+
+2. **Conservative on services with real users.** Stability beats elegance. Refactor proposals that touch live-traffic infra need strong justification — "cleaner architecture" is not enough; "fixes a known bug users hit" is.
+
+3. **No silent dependency additions.** New external deps (npm, pip, apt, gh extensions) require explicit summary.md mention with a rationale.
+
+4. **Verify by code, not READMEs.** ${OPERATOR_HANDLE} prefers to be shown the actual source line where something is implemented, not a README description. When Hermes describes how OpenClaw does X in pack summaries, link to the actual file:line.
+
+5. **${OPERATOR_LANGUAGES} are fine in summary.md and study notes.** Plain technical writing preferred over flowery prose.
+
+## Change budget for this host (this week)
+
+See `hermes-permissions.yaml` for full schema. Summary:
+
+| Tier | Per-week | Per-day | Auto-apply? |
+|---|---|---|---|
+| low_risk | 5 | 2 | yes |
+| medium_risk | 2 | 1 | yes (in window) |
+| high_risk | 1 | 1 | no — ${OPERATOR_HANDLE} approval |
+| forbidden_autonomous | 0 | 0 | never |
+
+Counters reset Monday 00:00 ${TZ_NAME}.
+
+## Maintenance windows
+
+- **Standard window**: 04:00–06:00 ${TZ_NAME} (typical low-traffic window)
+- **Frozen** when any of these lockfiles exist:
+  - `/var/run/operator-busy.lock` — operator working on the host directly
+- Low-risk packs may apply outside the window; medium and high wait.
+- No maintenance during backup windows (rsync/tar processes detected).
+
+## Phase tracking
+
+| Phase | What's in scope | Status |
+|---|---|---|
+| Phase 1 | Install Hermes, register hermes-maintainer subagent, smoke test, no Telegram for Hermes | TBD |
+| Phase 1.5 | Telegram bot for hermes-maintainer + talk-* ACP shortcuts | TBD |
+| Phase 2 | Enable Hermes Telegram gateway with own bot | TBD |
+| Phase 2.5 | Daily Hermes cron (rotating focus) + cross-patrol heartbeat dead-man-switch | TBD |
+| Phase 3 | Wire up telemetry to central dashboard (when dashboard exists) | Deferred |
+| Phase N | First real upgrade-pack proposed by Hermes and applied | Will happen when an OpenClaw release lands |
+
+(Update each Phase row's Status to "**Done YYYY-MM-DD**" as you complete it. This file is chattr +i; edit via `scripts/edit-baseline.sh`.)
+
+## Last known-good versions
+
+(See `baseline.policy.yaml` for the canonical pins.)
+
+- OpenClaw: ${KNOWN_GOOD_OPENCLAW_VERSION}
+- Hermes: ${KNOWN_GOOD_HERMES_VERSION}
+- Node: ${KNOWN_GOOD_NODE_VERSION}
+- Python: ${KNOWN_GOOD_PYTHON_VERSION}
