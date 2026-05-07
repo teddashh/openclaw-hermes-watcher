@@ -157,6 +157,57 @@ require_approval:
     description: Changing where dashboard telemetry goes. ${OPERATOR_HANDLE} only.
 
 # ---------------------------------------------------------------------------
+# PACK_KINDS — taxonomy of evolution-pack types Hermes may produce.
+# Each pack manifest in upgrade-packs/inbox/<topic>/manifest.yaml MUST declare
+# its pack_kind. Main agent reads this section to decide auto-apply eligibility,
+# verification depth, and rollback rigor before applying any pack.
+#
+# The taxonomy is ordered roughly by structural risk (lowest first):
+# install_skill / install_plugin are layer-only by construction (extension
+# points, not modifications) and thus low_risk by default. The higher-risk
+# kinds modify OpenClaw behavior more directly.
+# ---------------------------------------------------------------------------
+pack_kinds:
+  - id: install_skill
+    description: Drops a skill into ~/.openclaw/skills/. OpenClaw's documented extension point — structurally cannot modify OpenClaw itself.
+    structural_risk: low
+    default_tier: low_risk
+    rollback_pattern: rm -rf ~/.openclaw/skills/<skill_name>
+    auto_apply_in_window: true
+
+  - id: install_plugin
+    description: Installs a plugin via OpenClaw's plugin system. Same structural property as install_skill.
+    structural_risk: low
+    default_tier: low_risk
+    rollback_pattern: openclaw plugin uninstall <plugin_name>
+    auto_apply_in_window: true
+
+  - id: apply_upstream_patch
+    description: Integrates an upstream openclaw/openclaw change. Inherits upstream's risk profile.
+    structural_risk: depends_on_patch
+    default_tier: medium_risk
+    rollback_pattern: revert via git or pin to prior known_good version
+    auto_apply_in_window: true                # but main pre-apply must verify
+
+  - id: synthesize_custom
+    description: Hermes-designed skill / prompt rule / routing policy / guardrail not from upstream or community, motivated by service signal.
+    structural_risk: medium
+    default_tier: medium_risk
+    rollback_pattern: rm files Hermes added; main agent maintains snapshot
+    auto_apply_in_window: false               # operator review required
+
+  - id: config_change
+    description: Modifies ~/.openclaw/openclaw.json or other OpenClaw config via `openclaw config set`. Changes OpenClaw behavior directly.
+    structural_risk: high
+    default_tier: high_risk
+    rollback_pattern: openclaw config set with prior value
+    auto_apply_in_window: false               # operator review required
+
+# Note: pack_kind is one input to the change_budget tier; the other is
+# explicit risk_tier in the manifest (operator can override Hermes's default).
+# When risk_tier is more restrictive than default_tier, restrictive wins.
+
+# ---------------------------------------------------------------------------
 # VERSION PINS — what hermes-maintainer should treat as known-good.
 # ---------------------------------------------------------------------------
 known_good:

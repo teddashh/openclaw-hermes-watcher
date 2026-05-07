@@ -83,7 +83,7 @@ The naive approaches fail in specific, predictable ways:
 
 ### 2.4 What this template does instead
 
-- **A long-running agent (Hermes)** develops over weeks and months as a focused expert on OpenClaw evolution. Its accumulated model lives in `~/.hermes/memories/MEMORY.md` and `~/.hermes/skills/`. It does not start cold.
+- **A long-running agent (Hermes)** develops over weeks and months as a focused expert on **how this host's OpenClaw should evolve to serve the operator's services better**. Its accumulated model lives in `~/.hermes/memories/MEMORY.md` and `~/.hermes/skills/`. It does not start cold. It draws from four food sources in priority order: service signals (each subagent's MACHINE_LOG — the primary food, because service health is the only fitness function), upstream OpenClaw, the community ecosystem (high-star OpenClaw skill / plugin repos), and its own accumulated memory.
 - **A guardian subagent (`hermes-maintainer`)** runs scheduled checks on Hermes itself — `hermes doctor`, weekly insights summary, monthly compress, upstream watch. It cannot apply anything; only the operator decides.
 - **A hard baseline (`chattr +i` policy YAML files)** encodes what the agent MUST NOT do regardless of how convincing a future proposal is. No LLM can rewrite it because rewriting requires sudo, which agents don't have.
 - **A watcher (50-line bash, systemd user unit)** verifies the baseline 60 times per hour. It's not an LLM — it's pure rule-based code. It cannot be argued with.
@@ -107,6 +107,8 @@ The result is a system you can leave alone. You walk in once a month, glance at 
 | `~/hermes-maintainer/.openclaw-ws/` (subagent workspace) | Yes — OpenClaw's documented subagent mechanism |
 
 The full file inventory is in [§6 What Lives Where](#6-what-lives-where-after-install). Practical consequence: `openclaw upgrade` and `hermes update` (operator-approved) flow through without touching anything this template puts on disk.
+
+**The same layer-only commitment shapes what Hermes is allowed to propose.** Hermes's evolution-packs come in five `pack_kind`s (defined in `baseline.policy.yaml:pack_kinds`). The two safest — `install_skill` and `install_plugin` — drop into OpenClaw's documented extension points (`~/.openclaw/skills/` and the plugin system) and **structurally cannot modify OpenClaw itself**. This is why one of Hermes's four food sources is the community ecosystem (high-star skill / plugin repos like `VoltAgent/awesome-openclaw-skills`): adopting a community skill that solves a service pain is the most architecturally aligned move Hermes can make. Higher-risk pack kinds (`config_change`, `synthesize_custom`) require operator review.
 
 Each layer below earns its space — what it does, why it's needed, and what failure mode it addresses. The architecture takes deliberate positions on six known-hard problems any long-running-agent-on-production-host design must answer (see [§3.6](#36-how-we-address-the-six-known-hard-problems)).
 
@@ -187,13 +189,14 @@ A workspace subagent whose only job is to keep the local Hermes Agent install he
 
 #### 3.1.4 Hermes Agent (`openclaw-evolution` profile)
 
-**Job:** Long-term study of OpenClaw upstream. Read commits, issues, release notes. Maintain a deepening model of what was customized locally and why. Produce upgrade-packs when an OpenClaw release would be valuable to apply. Use its self-improvement loop to get better at this *one* job over time.
+**Job:** Actively evolve OpenClaw on this host so it serves the operator's services better. Read each service's MACHINE_LOG to find pain points; cross-reference with upstream OpenClaw, the community ecosystem (high-star skill / plugin repos), and accumulated MEMORY; produce evolution-packs that target specific service improvements. Use its self-improvement loop to get better at this *one* job over time. Success metric: service health (stability, latency, error rate, recovery time, ease of upgrade) — not upstream-conformance.
 
 **Allowed:**
-- Read `~/.openclaw/` (read-only)
+- Read `~/.openclaw/` (read-only) — including each service's MACHINE_LOG, evolution-journal, study-notes
 - Read upstream OpenClaw repo via `gh` CLI or REST fallback
+- Read community ecosystem: curator lists like `VoltAgent/awesome-openclaw-skills`, `gh search` for `topic:openclaw-skill` / `topic:openclaw-plugin`
 - Write to its own `~/.hermes/` profile dir (sessions, memories, skills, SOUL)
-- Produce upgrade-pack artifacts in `~/.openclaw/workspace/upgrade-packs/inbox/`
+- Produce evolution-pack artifacts in `~/.openclaw/workspace/upgrade-packs/inbox/`. Pack `kind` is one of `install_skill`, `install_plugin`, `apply_upstream_patch`, `synthesize_custom`, `config_change` — defined in `baseline.policy.yaml:pack_kinds`. The first two are structurally non-modifying (extension points only) and are preferred.
 - Talk to operator via CLI or Telegram (Phase 2, optional)
 
 **Cannot:**

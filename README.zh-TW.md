@@ -83,7 +83,7 @@ bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
 
 ### 2.4 這個 template 怎麼做
 
-- **長期駐留的 agent(Hermes)** 經過數週數月發展成 OpenClaw 演進的專注專家。它累積的模型放在 `~/.hermes/memories/MEMORY.md` 跟 `~/.hermes/skills/`。它**不會**從零開始。
+- **長期駐留的 agent(Hermes)** 經過數週數月發展成「**這台主機的 OpenClaw 該怎麼演化才能更好地服務 operator 的服務**」的專注專家。它累積的模型放在 `~/.hermes/memories/MEMORY.md` 跟 `~/.hermes/skills/`。它**不會**從零開始。它的食物源有四,按優先順序:服務信號(每個 subagent 的 MACHINE_LOG — 主食,因為服務健康度是唯一 fitness function)、上游 OpenClaw、社群生態系(高星 OpenClaw skill / plugin repos)、自己累積的 MEMORY。
 - **守護 subagent(`hermes-maintainer`)** 跑排程性的 Hermes 健康檢查 — `hermes doctor`、weekly insights summary、monthly compress、上游觀測。它**不能**自己 apply 任何東西;只有操作者決定。
 - **硬性 baseline(`chattr +i` 政策 YAML 檔)** 編碼 agent **絕不可以**做的事,不管未來提案多有說服力。沒有 LLM 改得掉,因為改它需要 sudo,而 agent 沒 sudo。
 - **Watcher(50 行 bash 的 systemd user unit)** 一小時 60 次驗證 baseline。它**不是 LLM** — 是純規則程式。**沒得吵。**
@@ -107,6 +107,8 @@ bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
 | `~/hermes-maintainer/.openclaw-ws/`(subagent workspace) | 動 — 用 OpenClaw 文件化的 subagent 機制 |
 
 完整檔案清單在 [§6 檔案落點](#6-檔案落點裝完之後長這樣)。實務影響:`openclaw upgrade` 跟 `hermes update`(operator 批准的)完全不會踩到 template 寫到磁碟上的任何東西。
+
+**同樣的 layer-only commitment 也約束 Hermes 能提的東西。** Hermes 產的 evolution-pack 分五種 `pack_kind`(定義在 `baseline.policy.yaml:pack_kinds`)。最安全的兩種 — `install_skill` 跟 `install_plugin` — 落到 OpenClaw 文件化的擴充點(`~/.openclaw/skills/` 跟 plugin 系統),**結構上不可能修改 OpenClaw 本體**。這就是為什麼 Hermes 的四個食物源裡有「社群生態系」(高星 skill / plugin repos 像 `VoltAgent/awesome-openclaw-skills`):採用解決服務痛點的社群 skill 是 Hermes 能做出最架構對齊的動作。較高風險的 pack kind(`config_change`、`synthesize_custom`)需要 operator review。
 
 下面每一層都得交代 — 它做什麼、為什麼需要它、它對應哪個失敗模式。整個架構針對「長駐有認知能力的 agent 在生產主機上要面對的六個已知難題」採取明確立場(看 [§3.6](#36-六個已知難題我們怎麼面對))。
 
@@ -187,13 +189,14 @@ bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
 
 #### 3.1.4 Hermes Agent(`openclaw-evolution` profile)
 
-**工作:** 長期研究 OpenClaw 上游。讀 commits、issues、release notes。維護一份「local 上有什麼客製、為什麼」的逐漸加深的模型。當有 OpenClaw release 值得 apply 時產出 upgrade-pack。透過自我改進迴路在這**一份**工作上越做越好。
+**工作:** 主動演化這台主機上的 OpenClaw,使它**更好地服務 operator 的服務**。讀每個服務的 MACHINE_LOG 找痛點;對照上游 OpenClaw、社群生態系(高星 skill / plugin repos)、自己累積的 MEMORY;產出針對特定服務改善的 evolution-pack。透過自我改進迴路在這**一份**工作上越做越好。成功指標:**服務健康度**(穩定性、延遲、錯誤率、復原時間、升級難度) — 不是上游一致性。
 
 **可以:**
-- 讀 `~/.openclaw/`(read-only)
+- 讀 `~/.openclaw/`(read-only) — 包含每個服務的 MACHINE_LOG、evolution-journal、study-notes
 - 透過 `gh` CLI 或 REST fallback 讀上游 OpenClaw repo
+- 讀社群生態系:curator list 像 `VoltAgent/awesome-openclaw-skills`、`gh search` `topic:openclaw-skill` / `topic:openclaw-plugin`
 - 寫到自己的 `~/.hermes/` profile dir(sessions、memories、skills、SOUL)
-- 在 `~/.openclaw/workspace/upgrade-packs/inbox/` 產出 upgrade-pack 工件
+- 在 `~/.openclaw/workspace/upgrade-packs/inbox/` 產出 evolution-pack 工件。Pack `kind` 是五種之一:`install_skill`、`install_plugin`、`apply_upstream_patch`、`synthesize_custom`、`config_change`(定義在 `baseline.policy.yaml:pack_kinds`)。前兩種結構上不修改任何東西(只是擴充點),優先採用。
 - 透過 CLI 或 Telegram(Phase 2,可選)跟 operator 講話
 
 **不能:**
