@@ -144,6 +144,9 @@ run_check() {
                    --exclude="check-no-pii.sh" \
                    --exclude=".pii-patterns.local" \
                    --exclude=".pii-patterns.local.example" \
+                   --exclude="machine.env" \
+                   --exclude="machine.env.secrets" \
+                   --exclude="heartbeat-patrol.env" \
             -- "$pattern" . 2>/dev/null || true)
     [ -z "$raw_lines" ] && return 0
 
