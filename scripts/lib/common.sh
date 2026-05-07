@@ -21,19 +21,31 @@ section() { echo; echo "${BLUE}==>${NC} $*"; }
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)}"
 REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 CONFIG_FILE="${CONFIG_FILE:-$REPO_ROOT/config/machine.env}"
+SECRETS_FILE="${SECRETS_FILE:-$REPO_ROOT/config/machine.env.secrets}"
 
 # Standard host paths the install creates.
 JOURNAL="${JOURNAL:-$HOME/.openclaw/workspace/evolution-journal.jsonl}"
 BASELINE_DIR="${BASELINE_DIR:-$HOME/.openclaw/workspace/baseline}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
 
-# load_config: source config/machine.env. Errors out cleanly if not present.
+# load_config: source config/machine.env (non-secret), then optionally
+# config/machine.env.secrets (bot tokens — gitignored, may not exist).
+# Errors out if the non-secret file is missing.
 load_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
         die "Missing $CONFIG_FILE — run: cp config/machine.env.example config/machine.env && \$EDITOR config/machine.env"
     fi
     # shellcheck disable=SC1090
     source "$CONFIG_FILE"
+
+    # Source secrets if present. The file is gitignored; on first install or
+    # on a fresh clone the user has not yet created it. Scripts that genuinely
+    # need a token should check for empty after this; install scripts that
+    # gate on bot presence (10-tg-maintainer.sh, 11-tg-hermes.sh) already do.
+    if [ -f "$SECRETS_FILE" ]; then
+        # shellcheck disable=SC1090
+        source "$SECRETS_FILE"
+    fi
 
     # Sanity check the absolute minimum
     [ -n "${OPERATOR_NAME:-}" ]  || die "OPERATOR_NAME not set in $CONFIG_FILE"

@@ -1,6 +1,14 @@
-# Per-machine config (contains bot tokens, operator identity, machine name).
-# Forks/users keep their own; upstream stays generic.
+# Per-machine config. Two files:
+#   config/machine.env         — non-secret values (operator identity, machine
+#                                 name, bot usernames, schedule, version pins).
+#                                 Intended to be COMMITTED to your private fork.
+#                                 Upstream gitignores it so the public template
+#                                 stays generic.
+#   config/machine.env.secrets — bot tokens. Gitignored EVERYWHERE, never
+#                                 committed (not even to a private fork). Lives
+#                                 on the machine it belongs to.
 config/machine.env
+config/machine.env.secrets
 config/heartbeat-patrol.env
 
 # Operator-specific PII pattern list (literals like real names, emails, bot

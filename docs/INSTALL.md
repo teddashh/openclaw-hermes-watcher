@@ -27,24 +27,40 @@ When new releases come out, `git pull upstream main`, resolve any conflicts in y
 
 ## 3. Configure
 
+There are TWO config files:
+
 ```bash
+# Non-secret values (operator identity, machine name, bot usernames, schedule).
+# Intended to be committed to YOUR private fork.
 cp config/machine.env.example config/machine.env
 $EDITOR config/machine.env
+
+# Bot tokens (the actual credentials).
+# GITIGNORED — never commit, not even to a private fork. Lives only on the
+# machine where it's installed.
+cp config/machine.env.secrets.example config/machine.env.secrets
+$EDITOR config/machine.env.secrets
 ```
 
-Required fields:
+`machine.env` required fields:
 
 - `OPERATOR_NAME`, `OPERATOR_HANDLE`, `OPERATOR_EMAIL` — how agents address you
 - `MACHINE_NAME`, `MACHINE_ROLE` — what this host is for
-- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD` — Markdown bullet lists describing your services and what's out of scope (this lands in `machine-mission.md`)
+- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD` — Markdown bullet lists for `machine-mission.md`
 
-Optional but recommended:
+`machine.env` optional but recommended:
 
-- `OPERATOR_TELEGRAM_USER_ID` (get yours from @userinfobot) — needed for any Telegram phases
-- `TG_BOT_HERMES_MAINTAINER_TOKEN` + `TG_BOT_HERMES_MAINTAINER_NAME` — Phase 1.5
-- `TG_BOT_HERMES_AGENT_TOKEN` + `TG_BOT_HERMES_AGENT_NAME` — Phase 2
+- `OPERATOR_TELEGRAM_USER_ID` (get yours from `@userinfobot`) — needed for any Telegram phases
+- `TG_BOT_*_NAME` — bot usernames (the @handle), one per agent
 
-Leave bot tokens empty if you don't want those phases. The install scripts skip them.
+`machine.env.secrets` (optional per phase):
+
+- `TG_BOT_MAIN_TOKEN` — leave empty to skip the main-agent Telegram bot
+- `TG_BOT_HERMES_MAINTAINER_TOKEN` — Phase 1.5
+- `TG_BOT_HERMES_AGENT_TOKEN` — Phase 2
+- `TG_BOT_PROJECT_SUBAGENT_TOKENS` — comma-sep, same order as `TG_BOT_PROJECT_SUBAGENT_NAMES` in `machine.env`
+
+Leave token fields empty for phases you don't want. The install scripts gate on token presence and skip cleanly.
 
 ### Creating Telegram bots
 

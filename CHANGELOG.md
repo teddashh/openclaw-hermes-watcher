@@ -4,6 +4,22 @@ All notable changes to this template will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-05-06
+
+Splits secrets from non-secret config so private forks can commit `machine.env` without bot tokens entering git history.
+
+### Changed
+
+- **`config/machine.env.example`** — bot TOKEN fields removed (now in `machine.env.secrets.example`). Bot NAMES (usernames) stay here. `HEARTBEAT_PATROL_BOT_TOKEN` removed (lives in secrets); `HEARTBEAT_PATROL_CHAT_ID` stays (PII but not credential).
+- **`config/machine.env.secrets.example`** — new file. Holds `TG_BOT_*_TOKEN` fields and `HEARTBEAT_PATROL_BOT_TOKEN`. Gitignored everywhere.
+- **`.gitignore`** — adds `config/machine.env.secrets`. Comment block clarifies the split.
+- **`scripts/lib/common.sh`** — `load_config()` sources `machine.env.secrets` after `machine.env` (if present). Tokens missing = phase skipped, same behavior as before.
+- **`docs/INSTALL.md`** — Step 3 now describes the two-file split and which fields go where.
+
+### Why
+
+Even private GitHub repos are not vaults; tokens belong on the machine, not in git. The split also makes per-machine forks cleaner: clone the private fork on a new machine, the structure is there, the secrets file gets created locally.
+
 ## [0.1.1] — 2026-05-06
 
 Reframes Hermes from "OpenClaw upstream integration engineer" to **service evolution scout**, in response to a 4-AI critique of v0.1.0 that correctly identified the diet (input source) was wrong.
