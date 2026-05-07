@@ -1,0 +1,74 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  bash-syntax:
+    name: bash -n on all .sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n every .sh under scripts/, lib/, tests/
+        run: |
+          set -e
+          fail=0
+          for f in scripts/*.sh scripts/lib/*.sh lib/*.sh tests/*.sh; do
+            if [ -f "$f" ]; then
+              if bash -n "$f"; then
+                echo "ok: $f"
+              else
+                echo "FAIL: $f"
+                fail=1
+              fi
+            fi
+          done
+          exit $fail
+
+  pii-check:
+    name: tests/check-no-pii.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: run check-no-pii.sh
+        run: |
+          bash tests/check-no-pii.sh
+
+  template-render-smoke:
+    name: render templates against example machine.env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install gettext (envsubst)
+        run: sudo apt-get update -qq && sudo apt-get install -qq -y gettext-base
+      - name: copy solo-dev.env as machine.env, render
+        run: |
+          cp examples/solo-dev.env config/machine.env
+          # We don't run the full install (no openclaw, no hermes here); just
+          # the render step, to confirm templates parse correctly with a real
+          # operator-supplied machine.env. Bypass load_config's auto-detect
+          # by setting versions explicitly.
+          mkdir -p .render-cache
+          source scripts/lib/render-template.sh
+          source config/machine.env
+          export HERMES_INSTALL_REF="${HERMES_INSTALL_REF:-main}"
+          export KNOWN_GOOD_OPENCLAW_VERSION="${KNOWN_GOOD_OPENCLAW_VERSION:-vX.Y.Z}"
+          export KNOWN_GOOD_HERMES_VERSION="${KNOWN_GOOD_HERMES_VERSION:-vX.Y.Z}"
+          export KNOWN_GOOD_NODE_VERSION="${KNOWN_GOOD_NODE_VERSION:-XX}"
+          export KNOWN_GOOD_PYTHON_VERSION="${KNOWN_GOOD_PYTHON_VERSION:-X.Y}"
+          for tmpl in templates/*.tmpl; do
+            out=".render-cache/$(basename "$tmpl" .tmpl)"
+            render_template "$tmpl" "$out"
+          done
+          echo "Rendered files:"
+          ls -la .render-cache/
+          echo
+          echo "Confirm no untouched \${VAR} placeholders remain:"
+          if grep -rn '\${[A-Z_]\+}' .render-cache/; then
+            echo "FAIL: untouched placeholders found"
+            exit 1
+          fi
+          echo "All placeholders substituted."
