@@ -4,6 +4,21 @@ All notable changes to this template will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] — 2026-05-06
+
+Fills the gap v0.1.1 left between SOUL.md (which says "Hermes's primary food is each service's MACHINE_LOG") and `hermes-permissions.yaml` (which only listed the maintainer's MACHINE_LOG, not project subagents'). Operators couldn't actually grant Hermes the permission its SOUL claimed.
+
+### Changed
+
+- **`templates/hermes-permissions.yaml.tmpl`** — `hermes_may.read:` now includes a `${HERMES_READ_EXTRA_PATHS_MD}` substitution slot for operator-supplied additional read paths (typically project subagent MACHINE_LOG files).
+- **`config/machine.env.example`** — new `HERMES_READ_EXTRA_PATHS_MD` field with example showing the YAML-list format.
+- **`scripts/lib/render-template.sh`** — added `HERMES_READ_EXTRA_PATHS_MD` to ALLOWED_VARS allowlist so envsubst substitutes it.
+- **`scripts/lib/common.sh`** — defaults `HERMES_READ_EXTRA_PATHS_MD=""` and exports it.
+
+### Why
+
+Without this, render-time hermes-permissions had a TODO comment ("Add other subagent workspace logs here") that operators were expected to manually edit post-render. That broke the "render once, deploy idempotently" flow. Now operators declare the paths in `machine.env`, render handles the rest.
+
 ## [0.1.2] — 2026-05-06
 
 Splits secrets from non-secret config so private forks can commit `machine.env` without bot tokens entering git history.

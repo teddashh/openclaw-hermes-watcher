@@ -60,6 +60,7 @@ load_config() {
     : "${MACHINE_ROLE:=A host running OpenClaw with the openclaw-evolution Hermes profile.}"
     : "${MACHINE_SERVICES_MD:=- (no services declared)}"
     : "${MACHINE_OUT_OF_SCOPE_MD:=- (no out-of-scope items declared)}"
+    : "${HERMES_READ_EXTRA_PATHS_MD:=}"
 
     # Hermes installer ref (used by 03-install-hermes.sh)
     : "${HERMES_INSTALL_REF:=main}"
@@ -102,7 +103,7 @@ load_config() {
     fi
 
     export OPERATOR_NAME OPERATOR_EMAIL OPERATOR_HANDLE OPERATOR_LOCATION OPERATOR_LANGUAGES OPERATOR_TELEGRAM_USER_ID
-    export MACHINE_NAME MACHINE_OS MACHINE_ROLE MACHINE_SERVICES_MD MACHINE_OUT_OF_SCOPE_MD
+    export MACHINE_NAME MACHINE_OS MACHINE_ROLE MACHINE_SERVICES_MD MACHINE_OUT_OF_SCOPE_MD HERMES_READ_EXTRA_PATHS_MD
     export TG_BOT_MAIN_TOKEN TG_BOT_MAIN_NAME
     export TG_BOT_HERMES_MAINTAINER_TOKEN TG_BOT_HERMES_MAINTAINER_NAME
     export TG_BOT_HERMES_AGENT_TOKEN TG_BOT_HERMES_AGENT_NAME

@@ -36,7 +36,11 @@ hermes_may:
 
     # Per-workspace MACHINE_LOG entries Hermes may need to understand impact
     - ~/hermes-maintainer/.openclaw-ws/MACHINE_LOG.md
-    # (Add other subagent workspace logs here if you want Hermes to see them.)
+    # Operator-supplied additional read paths (per-machine workload signals).
+    # Set HERMES_READ_EXTRA_PATHS_MD in machine.env to add subagent
+    # MACHINE_LOG paths or other observable service signals here. This is the
+    # "primary food" pipeline for Hermes per SOUL.md service-chain framing.
+${HERMES_READ_EXTRA_PATHS_MD}
 
     # Upstream watching — fetched via gh CLI which has its own auth
     - github.com/openclaw/openclaw                       # via gh, releases/issues/diffs
