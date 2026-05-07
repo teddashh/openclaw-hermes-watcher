@@ -4,6 +4,36 @@ All notable changes to this template will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.7] — 2026-05-07
+
+Public-facing polish for the now-public repo. No code or template changes; documentation only.
+
+### Added
+
+- **`README.md` / `README.zh-TW.md`** — three shield badges at top: CI status, Apache-2.0 license, latest release.
+- **`SECURITY.md`** — vulnerability reporting flow (private), explicit scope (what's in / out), token-leak emergency response steps.
+- **`CONTRIBUTING.md`** — quick path, what's likely / unlikely to land (with pointers to ARCHITECTURE.md), pre-PR test checklist, code-style notes.
+- **`.github/ISSUE_TEMPLATE/bug_report.md`** — diagnostic info reviewers need.
+- **`.github/ISSUE_TEMPLATE/feature_request.md`** — guides proposers toward addressing architectural-impact tradeoffs upfront.
+- **`.github/PULL_REQUEST_TEMPLATE.md`** — pre-flight checklist mirroring CI checks plus an architectural-impact prompt.
+- GitHub repository topics: `openclaw`, `hermes-agent`, `agent`, `ai-agent`, `agentic-os`, `bash`, `chattr`, `dead-mans-switch`, `systemd`, `template`.
+- Refined GitHub repository description.
+
+## [0.1.6] — 2026-05-07
+
+Public-readiness pieces.
+
+### Added
+
+- **`examples/solo-dev.env`** — minimal one-machine config, no Phase 2.
+- **`examples/shared-server.env`** — multi-service multi-bot, full Phase 1.5+2.
+- **`examples/README.md`** — picking guide.
+- **`.github/workflows/test.yml`** — CI that runs `bash -n` on all `.sh`, `tests/check-no-pii.sh`, and a template-render smoke (renders `solo-dev.env` against templates and confirms no untouched `${VAR}` placeholders remain).
+
+### Why
+
+These two land together because they're the "ready for public" pieces: examples are the reference for friends to copy, CI is the guardrail for PRs to that public repo.
+
 ## [0.1.5] — 2026-05-07
 
 Hermes self-reported during a Telegram-triggered production verification test that its `read_file` / `write_file` / `patch` tools resolve `~` against the sandboxed `home/` directory, not the host's real `$HOME`. This caused it to silently waste turns retrying with absolute paths when reading baseline files.
