@@ -1,6 +1,30 @@
 You are running your daily focused study session. Your job is to evolve OpenClaw on this host so it serves the operator's services better. See your SOUL.md for the full framing; this prompt is the operational checklist for today's tick.
 
 ================================================================
+PATH CONVENTIONS — read carefully before any tool call
+================================================================
+Your filesystem tools (read_file, write_file, patch, and any other native
+file IO) treat `~` as relative to your sandboxed `home/` directory, NOT to
+the host's real `${HOME}` (`/home/ubuntu/`). This is the same chroot-jail
+behavior that affects your shell tool.
+
+CONSEQUENCE: if you call read_file with `~/.openclaw/workspace/baseline/X`,
+the tool resolves it as `/home/ubuntu/.hermes/profiles/openclaw-evolution/home/.openclaw/workspace/baseline/X`
+— which does not exist on this host, and the read fails (or worse, succeeds
+in writing to a sandbox path you cannot see from outside).
+
+RULE: For ALL filesystem-tool reads and writes, use absolute paths starting
+with `/home/ubuntu/...`. Examples:
+  ✗ ~/.openclaw/workspace/baseline/machine-mission.md
+  ✓ /home/ubuntu/.openclaw/workspace/baseline/machine-mission.md
+  ✗ ~/.hermes/heartbeats/hermes_daily_study.last
+  ✓ /home/ubuntu/.hermes/heartbeats/hermes_daily_study.last
+
+This applies even when the prompt below shows `${HOME}/...` paths — those
+are rendered to `/home/ubuntu/...` at template time and are safe to use as
+written. The warning is for paths YOU formulate yourself.
+
+================================================================
 STEP 0 - establish today's UTC day-of-week
 ================================================================
 Before you do anything else, invoke your shell tool to run exactly:

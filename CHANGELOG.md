@@ -4,6 +4,18 @@ All notable changes to this template will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.5] — 2026-05-07
+
+Hermes self-reported during a Telegram-triggered production verification test that its `read_file` / `write_file` / `patch` tools resolve `~` against the sandboxed `home/` directory, not the host's real `$HOME`. This caused it to silently waste turns retrying with absolute paths when reading baseline files.
+
+### Changed
+
+- **`templates/hermes-daily-study-prompt.txt.tmpl`** — added a "PATH CONVENTIONS" section at top of the prompt explaining that filesystem tools (not just shell) resolve `~` to the sandbox-internal `home/`. Rule: always use absolute `/home/ubuntu/...` paths for self-formulated tool calls. Template-rendered `${HOME}/...` paths are safe (they get expanded at render time).
+
+### Why
+
+This was the same chroot-jail behavior already documented for the shell tool (see project memory `feedback_minimal_agent_files.md` and `project_hermes_phase1.md`), but the existing prompt only warned about shell — not about the native filesystem tools. Production verification on 2026-05-07 surfaced that Hermes hits this on every read attempt with `~`-prefixed paths, fallback-recovers via absolute path, but loses a turn each time.
+
 ## [0.1.4] — 2026-05-06
 
 Two idempotency fixes discovered during the first real migration of an existing OpenClaw host onto this template.
