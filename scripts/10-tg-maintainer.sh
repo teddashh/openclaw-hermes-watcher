@@ -35,18 +35,29 @@ emit_journal_event deploy_phase15_started "bot=${TG_BOT_HERMES_MAINTAINER_NAME:-
 # OpenClaw stores bot tokens in ~/.openclaw/openclaw.json under a per-bot section.
 # The exact CLI varies across OpenClaw versions; we try the common forms.
 
-info "Adding Telegram bot for hermes-maintainer..."
-if openclaw gateway telegram add \
-    --bot-name "${TG_BOT_HERMES_MAINTAINER_NAME:-maintainer_bot}" \
-    --token "$TG_BOT_HERMES_MAINTAINER_TOKEN" \
-    --bind-agent hermes-maintainer >/dev/null 2>&1; then
-    ok "bot added via 'openclaw gateway telegram add'"
-elif openclaw config set "gateway.telegram.bots.hermes-maintainer.token" "$TG_BOT_HERMES_MAINTAINER_TOKEN" --strict-json 2>/dev/null; then
-    openclaw config set "gateway.telegram.bots.hermes-maintainer.bot_name" "${TG_BOT_HERMES_MAINTAINER_NAME:-maintainer_bot}" --strict-json 2>/dev/null || true
-    openclaw config set "gateway.telegram.bots.hermes-maintainer.bind_agent" "hermes-maintainer" --strict-json 2>/dev/null || true
-    ok "bot configured via 'openclaw config set'"
+info "Configuring Telegram bot for hermes-maintainer..."
+# Real OpenClaw schema (verified against v2026.5.x) is:
+#   channels.telegram.accounts.<agent>.botToken
+# (NOT gateway.telegram.bots.<agent>.token, which was a guess in earlier
+# versions of this script.)
+#
+# Idempotent: if the bot is already configured (e.g., we re-ran scripts/all.sh
+# on a host where bot is already paired and working), `config set` of the
+# same value is a no-op. We don't want to error out on "bot already there".
+if openclaw config get "channels.telegram.accounts.hermes-maintainer.botToken" >/dev/null 2>&1; then
+    EXISTING_TOKEN=$(openclaw config get "channels.telegram.accounts.hermes-maintainer.botToken" 2>/dev/null | tr -d '"')
+    if [ "$EXISTING_TOKEN" = "$TG_BOT_HERMES_MAINTAINER_TOKEN" ]; then
+        info "  bot already configured with this token — idempotent skip"
+    else
+        openclaw config set "channels.telegram.accounts.hermes-maintainer.botToken" "$TG_BOT_HERMES_MAINTAINER_TOKEN" >/dev/null \
+            || die "Could not update existing bot token; inspect with: openclaw config get channels.telegram.accounts.hermes-maintainer"
+        ok "  bot token updated (was different from machine.env.secrets value)"
+    fi
+elif openclaw config set "channels.telegram.accounts.hermes-maintainer.botToken" "$TG_BOT_HERMES_MAINTAINER_TOKEN" >/dev/null 2>&1; then
+    openclaw config set "channels.telegram.accounts.hermes-maintainer.proxy" "${HEARTBEAT_PATROL_PROXY:-http://127.0.0.1:8118}" >/dev/null 2>&1 || true
+    ok "  bot added under channels.telegram.accounts.hermes-maintainer"
 else
-    die "Could not add Telegram bot — check 'openclaw gateway telegram --help' on your OpenClaw version"
+    die "Could not add Telegram bot — check 'openclaw config --help' on your OpenClaw version"
 fi
 
 info "Restarting openclaw-gateway to pick up bot..."

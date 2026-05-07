@@ -4,6 +4,19 @@ All notable changes to this template will be documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.4] — 2026-05-06
+
+Two idempotency fixes discovered during the first real migration of an existing OpenClaw host onto this template.
+
+### Changed
+
+- **`scripts/04-configure-hermes.sh`** — SOUL.md detection now recognizes Hermes installer's generic default ("You are Hermes Agent, an intelligent AI assistant...") and replaces it with the rendered service-chain version. Without this, an `rm SOUL.md` followed by `scripts/all.sh` would have Hermes regenerate its generic default before 04 ran, causing 04 to fall into the "preserve current" branch and leave the operator with the wrong SOUL.
+- **`scripts/10-tg-maintainer.sh`** — uses the real OpenClaw config schema (`channels.telegram.accounts.<agent>.botToken`) verified against v2026.5.x, not the guessed `gateway.telegram.bots.<agent>.token` path that earlier versions tried. Also: idempotent — if the bot is already configured with the same token, no-op; if different, update. Re-running `scripts/all.sh` on an already-deployed host no longer errors at this step.
+
+### Why
+
+Both bugs hide until you actually re-deploy onto an existing host (which is exactly the migration path documented in `docs/INSTALL.md` for fork updates). v0.1.4 is the first version that's been migration-tested.
+
 ## [0.1.3] — 2026-05-06
 
 Fills the gap v0.1.1 left between SOUL.md (which says "Hermes's primary food is each service's MACHINE_LOG") and `hermes-permissions.yaml` (which only listed the maintainer's MACHINE_LOG, not project subagents'). Operators couldn't actually grant Hermes the permission its SOUL claimed.

@@ -49,18 +49,26 @@ ok "Profile dir: $PROFILE_DIR"
 # Thursday self-correct rotation, the operator may hand-edit it, and the
 # upstream template's SOUL.md.tmpl may also evolve. None of these three
 # wins by default. Behavior:
-#   - missing -> write fresh from rendered template (initial install)
-#   - exists, identical to rendered -> no-op
-#   - exists, differs from rendered -> preserve current, warn so operator
-#     decides whether to roll forward
+#   - missing                                 -> write fresh from rendered template (initial install)
+#   - exists, identical to rendered           -> no-op
+#   - exists, BUT it's the Hermes installer's generic default              -> replace from rendered
+#     (the installer recreates a default SOUL.md if its profile dir exists
+#     without one — a re-install of an already-deployed profile sees the
+#     installer-default and would otherwise mistake it for "operator's edited SOUL")
+#   - exists, differs from rendered AND not generic                         -> preserve current, warn
+#     (operator or Hermes self-correction wrote it; their version wins)
 # To force-update SOUL from upstream: `rm $PROFILE_DIR/SOUL.md` and re-run.
+HERMES_GENERIC_SOUL_MARKER='You are Hermes Agent, an intelligent AI assistant created by Nous Research'
 if [ ! -f "$PROFILE_DIR/SOUL.md" ]; then
     cp "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"
     ok "SOUL.md written to $PROFILE_DIR (initial)"
 elif cmp -s "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"; then
     info "SOUL.md unchanged — preserving"
+elif grep -qF "$HERMES_GENERIC_SOUL_MARKER" "$PROFILE_DIR/SOUL.md" 2>/dev/null; then
+    cp "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"
+    ok "SOUL.md was Hermes installer's generic default — replaced with rendered service-chain version"
 else
-    warn "SOUL.md exists at $PROFILE_DIR/SOUL.md and differs from rendered template."
+    warn "SOUL.md exists at $PROFILE_DIR/SOUL.md and differs from rendered template (and is not generic Hermes default)."
     warn "  Hermes may have self-corrected this file, or you may have hand-edited it."
     warn "  Preserving current. To force-update from upstream:"
     warn "    rm $PROFILE_DIR/SOUL.md && bash scripts/04-configure-hermes.sh"
