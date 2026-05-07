@@ -1,5 +1,9 @@
 # openclaw-hermes-watcher
 
+[![test](https://github.com/teddashh/openclaw-hermes-watcher/actions/workflows/test.yml/badge.svg)](https://github.com/teddashh/openclaw-hermes-watcher/actions/workflows/test.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/tag/teddashh/openclaw-hermes-watcher?label=release&sort=semver)](https://github.com/teddashh/openclaw-hermes-watcher/releases)
+
 **[English](README.md)** | [繁體中文](README.zh-TW.md)
 
 > ## Manage the machine with OpenClaw's discipline.
