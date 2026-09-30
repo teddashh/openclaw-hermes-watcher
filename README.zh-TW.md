@@ -4,124 +4,130 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/tag/teddashh/openclaw-hermes-watcher?label=release&sort=semver)](https://github.com/teddashh/openclaw-hermes-watcher/releases)
 
-[English](README.md) | **[繁體中文](README.zh-TW.md)**
+[English](README.md) · **繁體中文**
+
+替既有的 OpenClaw 主機加上一層：Hermes 研究 agent、守護用的 subagent、`chattr +i` 政策基線與交叉巡邏心跳，而且不修改 OpenClaw 或 Hermes 的程式碼。
+
+**專案介紹頁：** https://teddashh.github.io/openclaw-hermes-watcher/?lang=zh-TW
 
 > ## 用 OpenClaw 的嚴謹管理機器
-> ## 用 Hermes 的積極管理進化
-> ### 兩台 Agent 互相幫忙
+> ## 用 Hermes 的積極管理演化
+> ### 兩個 agent，互相幫忙
 
-替已經跑著 [OpenClaw](https://docs.openclaw.ai) 的主機加上一**層 layer** — 我們**不去動** OpenClaw 跟 Hermes 本身,只透過它們的公開 CLI 跟慣用檔案路徑整合。它會裝一個專注研究 OpenClaw 上游的 [Hermes Agent](https://github.com/NousResearch/hermes-agent) profile、一個負責顧好 Hermes 安裝健康度的守護 subagent、一份任何 agent 都改不掉的 `chattr +i` 政策 baseline,以及一套確保「沒跑就會出聲」的決定性 dead-man-switch 心跳互巡機制 — **全都不修改 OpenClaw / Hermes 的已安裝 code。** 因此 `openclaw upgrade` 跟 `hermes update` 完全不會被我們踩到。
+這個 repo 是疊在既有 [OpenClaw](https://docs.openclaw.ai) 主機上的一**層**。它會加上一個專門研究「這台主機上的 OpenClaw 該怎麼演化」的 [Hermes Agent](https://github.com/NousResearch/hermes-agent) profile、一個照顧 Hermes 安裝狀態的守護 subagent、一份沒有 sudo 就改不動的 `chattr +i` 政策基線，以及一套確定性的交叉巡邏心跳，把 agent 自己不會回報的漏跑工作抓出來。**它不修改 OpenClaw 與 Hermes 已安裝的程式碼**。整合只透過兩者的公開 CLI 和慣用的檔案位置，所以 `openclaw upgrade` 和 `hermes update` 都不受影響。
 
-Apache-2.0 授權。v0.1.0。39 個檔案。經過三輪雲端 code review。
+Apache-2.0 授權。最新版本：v0.1.7（2026-05-07）。之後 `main` 就沒有新的 commit；安裝前請先看 [§10 已知限制](#10-已知限制)，尤其是 OpenClaw 2026.5.20 以後的版本。
 
 ---
 
 ## 目錄
 
-1. [TL;DR — 五行裝完](#1-tldr--五行裝完)
-2. [這個 repo 解決的問題](#2-這個-repo-解決的問題)
-3. [架構:每一層為什麼這樣設計](#3-架構每一層為什麼這樣設計)
+1. [快速開始](#1-快速開始)
+2. [這個專案要解決的問題](#2-這個專案要解決的問題)
+3. [架構：每一層為什麼存在](#3-架構每一層為什麼存在)
    - 3.1 [四個角色](#31-四個角色)
-   - 3.2 [檔案契約(roles 不互聊,只寫檔)](#32-檔案契約roles-不互聊只寫檔)
-   - 3.3 [硬性 baseline(chattr +i + sha256 + meta-hash)](#33-硬性-baselinechattr-i--sha256--meta-hash)
-   - 3.4 [Watcher(純 bash,不是 LLM)](#34-watcher純-bash不是-llm)
-   - 3.5 [Cross-Patrol Heartbeat(Phase 2.5)](#35-cross-patrol-heartbeatphase-25)
-   - 3.6 [六個已知難題我們怎麼面對](#36-六個已知難題我們怎麼面對)
-4. [實作對照](#4-實作對照)
+   - 3.2 [檔案契約](#32-檔案契約)
+   - 3.3 [硬性基線](#33-硬性基線chattr-i--sha256--meta-hash)
+   - 3.4 [Watcher](#34-watcher確定性的-bash不是-llm)
+   - 3.5 [交叉巡邏心跳](#35-交叉巡邏心跳phase-25)
+   - 3.6 [六個已知難題的立場](#36-六個已知難題的立場)
+4. [實作導覽](#4-實作導覽)
    - 4.1 [Repo 結構](#41-repo-結構)
-   - 4.2 [Phase 1 — 安裝](#42-phase-1--安裝)
-   - 4.3 [Phase 1.5 — talk-helpers + maintainer Telegram](#43-phase-15--talk-helpers--maintainer-telegram)
-   - 4.4 [Phase 2 — Hermes 自己的 Telegram gateway](#44-phase-2--hermes-自己的-telegram-gateway)
-   - 4.5 [Phase 2.5 — daily cron + 心跳互巡](#45-phase-25--daily-cron--心跳互巡)
+   - 4.2 [Phase 1：安裝](#42-phase-1安裝-hermesmaintainer基線與-watcher)
+   - 4.3 [Phase 1.5：talk-helpers 與 maintainer 的 Telegram](#43-phase-15talk-helpers-與-maintainer-的-telegram)
+   - 4.4 [Phase 2：Hermes 的 Telegram gateway](#44-phase-2hermes-的-telegram-gateway)
+   - 4.5 [Phase 2.5：每日排程與心跳](#45-phase-25每日排程與交叉巡邏心跳)
 5. [前置條件](#5-前置條件)
-6. [檔案落點(裝完之後長這樣)](#6-檔案落點裝完之後長這樣)
-7. [日常營運](#7-日常營運)
+6. [安裝後的檔案位置](#6-安裝後的檔案位置)
+7. [日常運作](#7-日常運作)
 8. [長期維護](#8-長期維護)
-9. [血淚經驗(都已經寫進 code 結構裡)](#9-血淚經驗都已經寫進-code-結構裡)
+9. [學到的教訓](#9-學到的教訓)
 10. [已知限制](#10-已知限制)
 11. [授權](#11-授權)
 
 ---
 
-## 1. TL;DR — 五行裝完
+## 1. 快速開始
 
-主機上 OpenClaw 已經跑著。你要在它上面加一個長期跑的 Hermes agent + 守護 + dead-man-switch。五個指令:
+OpenClaw 已經在跑了，你想在上面加一個長期運作的 Hermes agent、一個守護者和一個 dead-man's switch。五個指令：
 
 ```bash
-git clone https://github.com/<你>/openclaw-hermes-watcher
+git clone https://github.com/teddashh/openclaw-hermes-watcher   # 或你的 fork，見 docs/INSTALL.md
 cd openclaw-hermes-watcher
 cp config/machine.env.example config/machine.env
-$EDITOR config/machine.env             # 填操作者 + 主機 + bot tokens
-bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
+$EDITOR config/machine.env             # 管理者、主機、服務、排程（這裡不放機密）
+bash scripts/all.sh                    # 可重複執行的完整安裝
 ```
 
-驗證:`bash scripts/07-smoke-test.sh`。從這一刻起 Hermes 每天醒來、輪換焦點、把發現寫進檔案。Maintainer cron 互相監視 + 監視 Hermes;真的有 cron 漏跑時 Telegram 才會出聲。日常會經歷什麼 → 看 [§7](#7-日常營運)。
+Bot token 是選用的，放在另一個不進 git 的檔案：`cp config/machine.env.secrets.example config/machine.env.secrets`，只填你要用的 bot。沒有 token 的話，Telegram 相關階段會自動跳過。
 
-如果你想先理解架構為什麼長這樣再決定要不要裝,2 到 4 節是教育性的深度說明。
+`all.sh` 會要求 sudo（用來設定 `chattr +i`），第一次安裝 Hermes 大約要 10 到 20 分鐘。第 07 步會跑冒煙測試（`bash scripts/07-smoke-test.sh`），之後隨時可以再跑。從此 Hermes 每天醒來，依星期幾挑一個研究主題，把發現寫進檔案。四個 maintainer 工作和 Hermes 的工作會互相檢查心跳，只有某個工作錯過時段才會發警報。平常的一天是什麼樣子，請看 [§7 日常運作](#7-日常運作)。
 
----
-
-## 2. 這個 repo 解決的問題
-
-你跑著 OpenClaw,router 起來了、workspace bootstrap 過了、project subagents 註冊好了、Telegram bots 配對完成。現在你想要一個**長期駐留的 agent 看著 OpenClaw 上游** — 讀 commits、讀 issues、累積一份「我這台機器在哪裡 fork 過」的模型、有適合 apply 的 release 時起草 upgrade-pack — 但你不想每天看著它,也不想給它足夠繩子讓它把自己說服去做你沒授權的事。
-
-直覺的做法都會以可預測的方式失敗:
-
-### 2.1 「每天 cron 比對上游 + ping Slack」
-
-- 一個月後,你開始無視那些 ping。**Approval fatigue。**
-- 三個月後,你已經落後 6 個 minor version。第一個你真的看的 ping 是「23 commits、4 breaking」 — 一次評估太多。
-- Cron 不知道你的 local diff;它的 breaking-change 列表是「真正會壞的事」的超集。你不再相信那堆雜訊。
-
-### 2.2 「臨時請 Claude Code(或其他通用 agent)做」
-
-- 每個 session 從零開始。沒有累積的「為什麼三個月前我們改了 X 檔」模型。
-- 每個 session 對「值得 apply 什麼」有不同看法。**Taste drift** 在 sessions 之間。
-- 你每次都在付重建 context 的錢。成本累積。
-
-### 2.3 「讓 agent 自動更新就好」
-
-- 一直 work,直到不 work 那一天。**沒有 rollback path 的爛 upgrade,單一 shell 救不回來。**
-- Agent 沒有保留你 local diff 的動機;agent 的動機是「把 upgrade 弄上去」。
-- 一個失準的 agent 第一個學會的就是把那個本來該抓住它的 alert 關掉。
-
-### 2.4 這個 template 怎麼做
-
-- **長期駐留的 agent(Hermes)** 經過數週數月發展成「**這台主機的 OpenClaw 該怎麼演化才能更好地服務 operator 的服務**」的專注專家。它累積的模型放在 `~/.hermes/memories/MEMORY.md` 跟 `~/.hermes/skills/`。它**不會**從零開始。它的食物源有四,按優先順序:服務信號(每個 subagent 的 MACHINE_LOG — 主食,因為服務健康度是唯一 fitness function)、上游 OpenClaw、社群生態系(高星 OpenClaw skill / plugin repos)、自己累積的 MEMORY。
-- **守護 subagent(`hermes-maintainer`)** 跑排程性的 Hermes 健康檢查 — `hermes doctor`、weekly insights summary、monthly compress、上游觀測。它**不能**自己 apply 任何東西;只有操作者決定。
-- **硬性 baseline(`chattr +i` 政策 YAML 檔)** 編碼 agent **絕不可以**做的事,不管未來提案多有說服力。沒有 LLM 改得掉,因為改它需要 sudo,而 agent 沒 sudo。
-- **Watcher(50 行 bash 的 systemd user unit)** 一小時 60 次驗證 baseline。它**不是 LLM** — 是純規則程式。**沒得吵。**
-- **Cross-patrol heartbeat** 確保 Telegram 只在「真的有東西壞」(某個 cron 漏跑)時通知你。健康營運是**安靜**的。
-
-結果是一個你可以放著的系統。每月走進來一次,看一眼 `~/.openclaw/workspace/evolution-journal.jsonl`,知道 Hermes 最近在研究什麼,決定有沒有 draft 的 pack 值得 apply。其他時間 — 安靜。
+如果你想先弄懂架構為什麼長這樣再決定要不要裝，就繼續往下讀。第 2 到 4 節是完整說明。
 
 ---
 
-## 3. 架構:每一層為什麼這樣設計
+## 2. 這個專案要解決的問題
 
-**整合邊界優先講。** 這個 template 是個外掛層,透過 OpenClaw 跟 Hermes 的公開 CLI(`openclaw cron / agents / config`、`hermes profile / config / cron / gateway`)跟慣用檔案路徑(`~/.openclaw/workspace/`、`~/.hermes/profiles/<name>/`)整合。**從不**修改它們已安裝的 code:
+你在跑 OpenClaw：router 起來了，workspace 也 bootstrap 好了，專案用的 subagent 都註冊了，Telegram bot 也配對完成，一切順利。現在你想要一個長期運作的 agent 盯著 OpenClaw 上游（讀 commit 和 issue、記住你在本機改過哪些地方、遇到值得套用的版本就起草 upgrade-pack），但你不想每天盯著它，也不想給它太多空間，讓它說服自己去做你沒授權的事。
 
-| 路徑 | 這個 template 動嗎? |
+直覺的做法，會用可預期的方式失敗：
+
+### 2.1 「每天跑個 cron 比對上游，再 ping 我的 Slack 就好。」
+
+- 一個月後，你開始忽略那些通知。**審批疲勞（approval fatigue）。**
+- 三個月後，你已經落後六個 minor 版本。你真正點開的第一則通知寫著「23 個 commit、4 個 breaking」，多到沒辦法一次評估。
+- cron 不知道你在本機改過什麼，它列出的 breaking change 比真正會在這台機器上壞掉的東西多得多。久了你就不再相信這些雜訊。
+
+### 2.2 「有需要時再叫 Claude Code（或其他通用 agent）處理。」
+
+- 每個 session 都從零開始，沒有累積下來的脈絡，例如「三個月前為什麼改了 X 檔？」
+- 每個 session 對「什麼值得套用」看法都不同，session 之間會出現**品味漂移（taste drift）**。
+- 每次都要花錢重建脈絡，成本會一直累積。
+
+### 2.3 「讓 agent 自己更新，不用人管。」
+
+- 一直都沒事，直到出事的那天。沒有 rollback 路徑的壞升級，光靠一個 shell 很難救回來。
+- agent 沒有保留你本機修改的動機，它的動機是把升級做完。
+- 一個偏離目標的 agent，第一個學會的事就是把原本會抓到它的警報關掉。
+
+### 2.4 這個範本的做法
+
+- **長期運作的 agent**（Hermes）會在幾週、幾個月之間，成長為專精「**這台主機的 OpenClaw 該怎麼演化，才能把管理者的服務顧得更好**」的專家。累積的知識放在 `~/.hermes/memories/MEMORY.md` 和 `~/.hermes/skills/`，所以不會每次從零開始。它依優先順序從四個來源取材：服務訊號（每個 subagent 的 MACHINE_LOG，這是主食，因為服務健康度是唯一的評量標準）、上游 OpenClaw、社群生態系（高星數的 OpenClaw skill 和 plugin repo），以及自己累積的記憶。
+- **守護用的 subagent**（`hermes-maintainer`）定期檢查 Hermes 本身：`hermes doctor`、每週 insights 回顧、每月壓縮，以及追蹤上游版本。它不能套用 pack，也不能執行 `hermes update`；它負責提醒，由管理者決定。
+- **硬性基線**（`chattr +i` 政策檔）寫明 agent 絕對不能做的事，不管將來的提案多有說服力。要改寫它得先執行 `sudo chattr -i`，而 agent 照理不該有 sudo（請看 [§3.3](#33-硬性基線chattr-i--sha256--meta-hash) 的但書）。
+- **Watcher**（約 200 行 bash，跑在 systemd user unit 裡）每 60 秒檢查一次基線。它是規則式的程式，不是 LLM，沒有討價還價的空間。
+- **交叉巡邏心跳**讓 Telegram 只在排程工作錯過時段時才通知你。運作正常時完全安靜。
+
+結果是一個大致可以放著不管的系統。你每個月進來看一次，瀏覽 `~/.openclaw/workspace/evolution-journal.jsonl`，看看 Hermes 最近在研究什麼，再審核需要你決定的 pack。其他時候，一片安靜。
+
+---
+
+## 3. 架構：每一層為什麼存在
+
+**先講整合邊界**。這個範本是一層外掛，透過 OpenClaw 和 Hermes 的公開 CLI（`openclaw cron / agents / config`、`hermes profile / config / cron / gateway`）以及慣用的檔案位置（`~/.openclaw/workspace/`、`~/.hermes/profiles/<name>/`）整合，**從不修改**它們已安裝的程式碼：
+
+| 路徑 | 這個範本會動嗎？ |
 |---|---|
-| `/usr/lib/node_modules/openclaw/`(OpenClaw 已安裝 code) | **不動** — 列在 `baseline.policy.yaml:immutable_paths` |
-| `~/.hermes/hermes-agent/`(Hermes 已安裝 code) | **不動** — 只能透過 operator 批准的 `hermes update` 管 |
-| `~/.openclaw/openclaw.json`(OpenClaw 主 config) | **不直接寫** — 只透過 `openclaw config set` |
-| `~/.openclaw/workspace/baseline/`(本 template 的政策檔) | 動 — 部署後 chattr +i,只 operator 編 |
-| `~/.hermes/profiles/openclaw-evolution/`(一個 Hermes profile) | 動 — 用 Hermes 文件化的 profile 機制 |
-| `~/hermes-maintainer/.openclaw-ws/`(subagent workspace) | 動 — 用 OpenClaw 文件化的 subagent 機制 |
+| `/usr/lib/node_modules/openclaw/`（OpenClaw 已安裝的程式） | **不會**。列在 `baseline.policy.yaml` 的 `immutable_paths` |
+| `~/.hermes/hermes-agent/`（Hermes 已安裝的程式） | **不會**。只由管理者執行的 `hermes update` 更動 |
+| `~/.openclaw/openclaw.json`（OpenClaw 主設定檔） | **不直接寫入**。變更都透過 `openclaw` CLI（例如 `openclaw config set`） |
+| `~/.openclaw/workspace/baseline/`（本範本的政策檔） | 會。部署後設為 `chattr +i`，只有管理者能編輯 |
+| `~/.hermes/profiles/openclaw-evolution/`（一個 Hermes profile） | 會。使用 Hermes 文件記載的 profile 機制 |
+| `~/hermes-maintainer/.openclaw-ws/`（subagent workspace） | 會。使用 OpenClaw 文件記載的 subagent 機制 |
 
-完整檔案清單在 [§6 檔案落點](#6-檔案落點裝完之後長這樣)。實務影響:`openclaw upgrade` 跟 `hermes update`(operator 批准的)完全不會踩到 template 寫到磁碟上的任何東西。
+完整的檔案清單在 [§6 安裝後的檔案位置](#6-安裝後的檔案位置)。實際的效果是：`openclaw upgrade` 和管理者執行的 `hermes update`，都不會碰到這個範本放在磁碟上的任何東西。
 
-**同樣的 layer-only commitment 也約束 Hermes 能提的東西。** Hermes 產的 evolution-pack 分五種 `pack_kind`(定義在 `baseline.policy.yaml:pack_kinds`)。最安全的兩種 — `install_skill` 跟 `install_plugin` — 落到 OpenClaw 文件化的擴充點(`~/.openclaw/skills/` 跟 plugin 系統),**結構上不可能修改 OpenClaw 本體**。這就是為什麼 Hermes 的四個食物源裡有「社群生態系」(高星 skill / plugin repos 像 `VoltAgent/awesome-openclaw-skills`):採用解決服務痛點的社群 skill 是 Hermes 能做出最架構對齊的動作。較高風險的 pack kind(`config_change`、`synthesize_custom`)需要 operator review。
+**同樣的「只做外掛層」原則，也限制了 Hermes 能提什麼**。Hermes 的 evolution-pack 分成五種 `pack_kind`，定義在 `baseline.policy.yaml` 的 `pack_kinds`。最安全的兩種是 `install_skill` 和 `install_plugin`，它們放進 OpenClaw 文件記載的擴充點（`~/.openclaw/skills/` 和 plugin 系統），**在結構上不可能修改 OpenClaw 本身**。這也是 Hermes 的四個取材來源裡有社群生態系的原因（像 `VoltAgent/awesome-openclaw-skills` 這類高星數的 skill 與 plugin repo）：採用能解決服務痛點的社群 skill，是 Hermes 最符合外掛層原則的做法。政策允許 main 在驗證後，於維護時段內、每週變更額度之內套用這兩種 pack 和 `apply_upstream_patch`；`synthesize_custom` 和 `config_change` 一律等管理者審核。
 
-下面每一層都得交代 — 它做什麼、為什麼需要它、它對應哪個失敗模式。整個架構針對「長駐有認知能力的 agent 在生產主機上要面對的六個已知難題」採取明確立場(看 [§3.6](#36-六個已知難題我們怎麼面對))。
+下面每一層都要交代清楚：它做什麼、為什麼需要、對應哪一種失敗模式。任何「長期運作的 agent 跑在正式主機上」的設計，都得回答六個已知難題，這個架構對每一題都表明了立場（見 [§3.6](#36-六個已知難題的立場)）。
 
 ### 3.1 四個角色
 
-四個 agent 角色 + 一個人:
+架構裡有四個 agent 角色，加上一個人：
 
 ```
-                        Operator(人,Principal)
+                        Operator（人，Principal）
                          │
                          │  CLI · SSH · Telegram bots
                          ▼
@@ -131,13 +137,13 @@ bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
               └─┬──────────────────────┘
                 │ spawns + governs
                 ▼
-   ┌─────────────────────────────────────────────────────┐
-   │ OpenClaw workspace subagents                         │
-   │ ─────────────────────────────────────────────────── │
-   │ <你的 project subagents — 不在此 repo 範圍>            │
+   ┌───────────────────────────────────────────────────────┐
+   │ OpenClaw workspace subagents                          │
+   │ ───────────────────────────────────────────────────── │
+   │ <your project subagents: out of scope for this repo>  │
    │ hermes-maintainer (~/hermes-maintainer/.openclaw-ws/) │
-   └────────────────────┬────────────────────────────────┘
-                        │ "hermes-maintainer" 讀 / 跑:
+   └────────────────────┬──────────────────────────────────┘
+                        │ "hermes-maintainer" 讀取 / 執行：
                         ▼
               ┌────────────────────────┐
               │  Hermes Agent          │  演化 OpenClaw
@@ -147,514 +153,565 @@ bash scripts/all.sh                     # 冪等(idempotent),一氣呵成
               └────────────────────────┘
 ```
 
-**經驗法則:從目錄列表看不出每個角色在做什麼,代表部署出錯了。** 每個角色的足跡都在 plain markdown / JSONL / YAML 裡 — 人能讀、未來 Claude Code rescue 能讀、其他 agent 也能讀。沒有專有狀態、沒有不透明的 SQLite blob 要解讀。
+**經驗法則：如果從目錄列表看不出每個角色在做什麼，部署就出問題了**。角色之間用來協調的東西全是純文字的 markdown、JSONL 或 YAML，人看得懂，之後來救援的 Claude Code session 看得懂，其他 agent 也看得懂。Hermes 自己的 session 紀錄存在它的 SQLite 裡，但協調流程完全不依賴它。
 
-#### 3.1.1 Operator(Principal)
+**關於強制力**。所有 agent 都以執行安裝程式的那個 Linux 帳號身分執行。真正硬性的保證只有 `chattr +i` 的檔案（要 root 才能改）和 Hermes 自己的 shell sandbox。下面各角色「不能」的清單，其餘都是政策：寫在 `baseline.policy.yaml` 和 `hermes-permissions.yaml`，由 agent 讀取，並由 main 在套用 pack 前檢查。
 
-人類。終極權威。**架構的存在是為了讓你「不需要」每天看著它**;它保留你冷啟動進來理解狀態的能力,但不要求。
+#### 3.1.1 Operator（管理者，Principal）
 
-你跟 agents 溝通透過:
-- CLI(`talk-main`、`talk-hermes` 等 — Phase 1.5+)
-- Telegram bots(per-agent,Phase 1.5/Phase 2 opt-in)
-- SSH + 直接編輯檔案(永遠可用)
+就是人，也是最終的決定者。這個架構的設計讓你不必一直盯著；你隨時可以冷啟動進來看懂目前狀態，但不需要天天這麼做。
 
-你擁有 agents 沒有的權威:
-- `sudo chattr -i` — 只有你能 unfreeze baseline(透過 `scripts/edit-baseline.sh`)
-- `hermes update` — 只有你決定何時升級 Hermes(maintainer 標記 release,你動)
-- Pack apply — main 在驗證後 apply,但只有在 pack 進 inbox 且你決定後
+你和 agent 溝通的方式：
+- CLI（`talk-main`、`talk-maintainer`、`talk-hermes`，Phase 1.5 起）
+- Telegram bot（每個 agent 各一個，Phase 1.5 和 Phase 2 自行選擇是否啟用）
+- SSH 加上直接編輯檔案（隨時可用）
+
+只有你有、agent 沒有的權限：
+- `sudo chattr -i`：只有你能解凍基線（透過 `scripts/edit-baseline.sh`）
+- `hermes update`：只有你決定何時升級 Hermes（maintainer 提醒有新版本，由你動手）
+- 高風險 pack：`synthesize_custom`、`config_change` 以及所有 `high_risk` 等級的 pack，都要等你核准。低風險和中風險的 pack，main 驗證後可以在 `hermes-permissions.yaml` 的變更額度內、`machine-mission.md` 規定的維護時段內套用（`machine.env` 裡 `TZ_NAME` 時區的 04:00 到 06:00；低風險 pack 在時段外也可以套用）。
 
 #### 3.1.2 OpenClaw main agent
 
-**工作:** 路由請求。處理主機層級事務(Caddy、Docker、systemd、ports、SSL、backups)。在驗證後 apply Hermes 產出的 upgrade-pack。寫 evolution journal。治理 subagents。
+**工作**：轉送請求。處理主機層級的事（Caddy、Docker、systemd、連接埠、SSL、備份）。驗證 Hermes 產出的 pack，套用政策允許的那些。寫入 evolution journal。管理 subagent。
 
-**不能:** 改 `baseline.policy.yaml` `immutable_paths` 裡的檔。改 watcher unit 或它的 policy(`chattr +i` 強制)。改 Hermes 的 source 安裝(`~/.hermes/hermes-agent/`)除非透過 documented `hermes update` flow + operator 批准。
+**不能**：修改 `baseline.policy.yaml` 裡 `immutable_paths` 列出的檔案。修改 watcher 腳本或政策檔（都是 `chattr +i`）。停掉或修改 watcher 的 unit（這只是政策，`disable_watcher` 目前還沒有偵測機制，見 [§10](#10-已知限制)）。修改 Hermes 的原始安裝（`~/.hermes/hermes-agent/`）；升級一律透過管理者執行的 `hermes update`。
 
-**足跡:** `~/.openclaw/workspace/MACHINE_LOG.md`、`evolution-journal.jsonl`、`DEVIATIONS.md`。
+**足跡**：`~/.openclaw/workspace/MACHINE_LOG.md`、`evolution-journal.jsonl`、`DEVIATIONS.md`。
 
 #### 3.1.3 hermes-maintainer subagent
 
-唯一工作:讓本機 Hermes Agent 安裝**保持健康、跟得上、跟它應該做的事對齊**。**Hermes 的醫生兼史官,不是它的老闆。**
+一個 workspace subagent，唯一的工作是讓本機的 Hermes Agent 保持健康、版本跟得上，而且不偏離任務。**它是 Hermes 的醫生兼檔案管理員，不是它的上司。**
 
-**可以:**
-- 跑 `hermes doctor`、`hermes status`、`hermes -p openclaw-evolution insights --days N`
-- 讀 `~/.hermes/sessions/`、memories、skills(read-only)
-- 讀上游 Hermes repo 觀察 release
-- 寫 study notes 到 `~/hermes-maintainer/.openclaw-ws/study-notes/`
-- 透過 journal 通知 main agent 有什麼需要關注
+**可以：**
+- 執行 `hermes doctor`、`hermes status`、`hermes -p openclaw-evolution insights --days N`
+- 讀取 `~/.hermes/sessions/`、memories 和 skills（唯讀）
+- 讀取上游 Hermes repo，追蹤新版本
+- 把研究筆記寫到 `~/hermes-maintainer/.openclaw-ws/study-notes/`
+- 寫 journal 事件給 main 和管理者（例如 `hermes_proposed`、`hermes_release_review_pending`）
 
-**不能:**
-- 編輯 Hermes 的 SOUL.md / USER.md / MEMORY.md(那是 Hermes 自己的狀態)
-- 改 `~/.hermes/.env`(API keys — operator only)
-- Apply Hermes 產出的 upgrade-pack(只有 main 可以,而且要驗證後)
-- 改 baseline 或 watcher
-- 自己跑 `hermes update` — 在 `forbidden_autonomous`;轉成 journal event 給 operator
+**不能：**
+- 編輯 Hermes 的 SOUL.md、USER.md 或 MEMORY.md（那是 Hermes 自己的狀態）
+- 修改 `~/.hermes/.env`（API 金鑰，只有管理者能動）
+- 套用 Hermes 產出的 pack（只有 main 可以，而且要先驗證）
+- 修改基線或 watcher
+- 自行執行 `hermes update`。它列在 `hermes-permissions.yaml` 的 `forbidden_autonomous`；maintainer 只寫一筆 journal 事件，由管理者決定。
 
-**為什麼跟 main 分開:** Maintainer 的 daily/weekly 節奏專注於 Hermes 相關信號。它不跟 main 的主機管理工作搶資源。它的 bootstrap 檔(`AGENTS.md`、`IDENTITY.md`)把它錨在窄的角色上,即使 operator 數週沒進來。
+**為什麼要跟 main 分開**：它每天、每週的節奏只處理和 Hermes 有關的訊號，不會和 main 的主機管理工作搶資源。它的 bootstrap 檔（`AGENTS.md`、`IDENTITY.md`）讓它守在這個範圍很窄的角色裡，即使管理者好幾週沒進來也一樣。
 
-#### 3.1.4 Hermes Agent(`openclaw-evolution` profile)
+#### 3.1.4 Hermes Agent（`openclaw-evolution` profile）
 
-**工作:** 主動演化這台主機上的 OpenClaw,使它**更好地服務 operator 的服務**。讀每個服務的 MACHINE_LOG 找痛點;對照上游 OpenClaw、社群生態系(高星 skill / plugin repos)、自己累積的 MEMORY;產出針對特定服務改善的 evolution-pack。透過自我改進迴路在這**一份**工作上越做越好。成功指標:**服務健康度**(穩定性、延遲、錯誤率、復原時間、升級難度) — 不是上游一致性。
+**工作**：演化這台主機上的 OpenClaw，讓它把管理者的服務顧得更好。讀每個服務的 MACHINE_LOG 找出痛點，對照上游 OpenClaw、社群生態系（高星數的 skill 與 plugin repo）和累積的 MEMORY，起草針對特定服務改善的 evolution-pack。它的自我改進迴路只對準這**一件**工作。成功指標是服務健康度（穩定性、延遲、錯誤率、復原時間、升級難易度），不是跟上游有多一致。
 
-**可以:**
-- 讀 `~/.openclaw/`(read-only) — 包含每個服務的 MACHINE_LOG、evolution-journal、study-notes
-- 透過 `gh` CLI 或 REST fallback 讀上游 OpenClaw repo
-- 讀社群生態系:curator list 像 `VoltAgent/awesome-openclaw-skills`、`gh search` `topic:openclaw-skill` / `topic:openclaw-plugin`
-- 寫到自己的 `~/.hermes/` profile dir(sessions、memories、skills、SOUL)
-- 在 `~/.openclaw/workspace/upgrade-packs/inbox/` 產出 evolution-pack 工件。Pack `kind` 是五種之一:`install_skill`、`install_plugin`、`apply_upstream_patch`、`synthesize_custom`、`config_change`(定義在 `baseline.policy.yaml:pack_kinds`)。前兩種結構上不修改任何東西(只是擴充點),優先採用。
-- 透過 CLI 或 Telegram(Phase 2,可選)跟 operator 講話
+**可以：**
+- 讀取 `~/.openclaw/`（唯讀），包括每個服務的 MACHINE_LOG、evolution journal 和研究筆記
+- 透過 `gh` CLI 讀取上游 OpenClaw repo，不行時改用 REST API
+- 讀取社群生態系：像 `VoltAgent/awesome-openclaw-skills` 這類整理清單，以及 `gh search repos --topic openclaw-skill` / `--topic openclaw-plugin`
+- 寫入自己的 `~/.hermes/` 空間（sessions、memories、skills、SOUL、heartbeats）
+- 在 `~/.openclaw/workspace/upgrade-packs/inbox/` 起草 evolution-pack。Pack 的 `kind` 是 `install_skill`、`install_plugin`、`apply_upstream_patch`、`synthesize_custom`、`config_change` 其中之一，定義在 `baseline.policy.yaml` 的 `pack_kinds`。前兩種只用到擴充點，優先採用。
+- 透過 CLI 回覆管理者；啟用 Phase 2 的話也可以用 Telegram
 
-**不能:**
-- 直接寫 `~/.openclaw/`,只能透過 upgrade-pack inbox
-- Apply 自己產出的 upgrade-pack
-- 改 `~/.hermes/.env`
-- 改 watcher 或 baseline policy
-- 在自己 sandbox 外起 shell process(Hermes shell tool 是 chroot-jailed — 詳見 [§9 血淚經驗](#9-血淚經驗都已經寫進-code-結構裡))
+**不能：**
+- 直接寫入 `~/.openclaw/`，upgrade-pack inbox 除外
+- 套用自己產出的 pack
+- 修改 `~/.hermes/.env`
+- 修改 watcher 或基線政策
+- 在 sandbox 外執行 shell 指令（Hermes 的 shell 工具被 chroot 關在 sandbox 裡，見 [§9 學到的教訓](#9-學到的教訓)）
 
-### 3.2 檔案契約(roles 不互聊,只寫檔)
+### 3.2 檔案契約
 
-> **角色之間「不」互相聊。它們透過寫結構化檔案讓對方讀來溝通。**
+> **角色之間「不」互相聊天。它們把結構化的檔案寫到磁碟上，讓其他角色去讀。**
 
-這是整個系統最重要的單一架構規則。**沒有 agent-to-agent 的 prompt 傳遞、沒有 live RPC、沒有協商。** 每個角色把資料寫到磁碟上,格式是其他人(以及救火時的 Claude Code)能讀的。
+這是整個系統最重要的一條架構規則。沒有 agent 之間互傳 prompt，沒有即時 RPC，也沒有協商。每個角色都用其他角色（以及救援時的 Claude Code）讀得懂的格式寫到磁碟上。
 
-| From → To | 通道 | 格式 |
+| 從 → 到 | 管道 | 格式 |
 |---|---|---|
-| Hermes → main | Upgrade-pack drop dir | `manifest.yaml` + diffs |
-| main → Hermes | Evolution journal entries | append-only JSONL |
-| hermes-maintainer → main | Study notes + journal events | markdown + JSONL |
-| 任何 subagent → main | `MACHINE_LOG.md` updates | markdown |
-| Operator → 任何角色 | CLI / Telegram / SSH | conversational |
+| Hermes → main | upgrade-pack inbox | `manifest.yaml`、`summary.md`、`rollback-plan.md` |
+| main → Hermes | evolution journal 條目 | 只能附加的 JSONL |
+| hermes-maintainer → main | 研究筆記 + journal 條目 | markdown + JSONL |
+| watcher → main、管理者 | evolution journal 條目 | 只能附加的 JSONL |
+| 任何 subagent → main | 更新 `MACHINE_LOG.md` | markdown |
+| 管理者 → 任何角色 | CLI / Telegram / SSH | 對話 |
 
-**為什麼用檔案,不用 RPC:**
+**為什麼用檔案，不用 RPC：**
 
-1. **可審計。** 一個 pack proposal 是你 `cat` 得到的檔。一個 journal event 是你 `jq` 得出的 JSONL 行。沒有 transient 狀態、沒有「agents 昨天聊了什麼」這種問題。如果發生了,就在磁碟上。
-2. **可救火。** 出事 cold-SSH 進來時,plain markdown / JSONL / YAML 是現存最 rescue-friendly 的格式。沒有 daemon 要 inspect、沒有網路 endpoint 要查,只有檔案。
-3. **預設非同步。** Agents 不需要同時上線。Hermes 週一 06:00 UTC 起草 pack;main 週三 04:30 EDT 在它的排程跑時讀。各自步調。
-4. **沒有 agent-to-agent 說服。** Hermes 想要 main apply 一個 pack 時,寫個 `hermes_proposed` event 帶 pack ID。它**不**寫散文說服 main。Main 讀 manifest.yaml 自己決定。
-5. **跟 rescue agent 對稱。** 你(或 Claude Code)走進來調查「這台機器發生什麼事」時,**讀的是跟 agents 一樣的檔**。沒有要還原的隱藏 inter-agent 狀態。
+1. **可稽核**。一份 pack 提案就是一個可以 `cat` 的檔案，一筆 journal 事件就是一行可以 `jq` 的 JSONL。沒有暫存狀態，也不會有「agent 昨天彼此說了什麼」這種問題。發生過的事，都在磁碟上。
+2. **好救援**。出事時你冷啟動 SSH 進來，純文字的 markdown、JSONL、YAML 幾乎是最好救援的格式。不用檢查 daemon，不用查網路端點，只有檔案。
+3. **預設非同步**。agent 不必同時在線。Hermes 在週四 10:00 UTC 那次執行起草 pack，週五寫好 `summary.md`；maintainer 和 main 依自己的排程接手。每個角色照自己的步調走。
+4. **agent 之間不互相遊說**。pack 準備好時，maintainer 寫一筆帶 pack ID 的 `hermes_proposed` journal 事件。沒有人寫一段文字去說服 main。main 讀 `manifest.yaml`，自己決定。
+5. **和救援者看到的一樣**。你（或 Claude Code）進來調查「這台主機怎麼了」時，讀的就是 agent 讀的同一批檔案，沒有隱藏的 agent 之間狀態需要還原。
 
-### 3.3 硬性 baseline(chattr +i + sha256 + meta-hash)
+### 3.3 硬性基線（chattr +i + sha256 + meta-hash）
 
-`~/.openclaw/workspace/baseline/` 含四個政策檔加兩個完整性 hash:
+`~/.openclaw/workspace/baseline/` 裡有三個政策檔、watcher 腳本，以及兩個完整性雜湊：
 
 ```
 baseline/
-├── baseline.policy.yaml         # forbidden_actions, immutable_paths, allow_write_for_main, change_budget, require_approval
-├── hermes-permissions.yaml      # Hermes 可 / 不可做
-├── machine-mission.md           # 這台主機是做什麼的
-├── watcher.sh                   # 定期 sentinel
-├── .expected-hashes             # 上面四檔的 sha256
-└── .expected-hashes.sha256      # meta-hash,.expected-hashes 自己的 sha256
+├── baseline.policy.yaml         # immutable_paths, allow_write_for_main, forbidden_actions, require_approval, pack_kinds, known_good, managed_paths
+├── hermes-permissions.yaml      # hermes_may, hermes_may_not, change_budget
+├── machine-mission.md           # 這台主機的用途、變更額度摘要、維護時段
+├── watcher.sh                   # 哨兵腳本
+├── .expected-hashes             # 上面四個檔案的 sha256
+└── .expected-hashes.sha256      # meta-hash：.expected-hashes 本身的 sha256
 ```
 
-部署完六個全部 `chattr +i`(immutable)。
+部署後這六個檔案都是 `chattr +i`。watcher 的 systemd unit 檔不是（見 [§3.4](#34-watcher確定性的-bash不是-llm)）。
 
-**為什麼用 chattr +i**(而不是只靠檔案權限):
-- Linux 檔案權限可以被檔案 owner 改。`ubuntu` user(agents 跑的身份)擁有 baseline 檔案;沒 chattr 的話,任何 agent 都能 `chmod` 然後改寫。
-- `chattr +i` 在 kernel 層讓檔案真正 immutable。寫入需要先 `chattr -i`,而那需要 `sudo`。**Agents 沒 sudo。Operator 有。**
-- 這是系統裡**最承重的單一安全屬性**。沒有它,其他每一層都是裝飾 — 一個決定 policy「過時了」的 LLM 直接改寫就好。
+**為什麼用 chattr +i**（而不是一般檔案權限）：
+- 檔案權限可以由檔案擁有者修改。agent 和擁有基線檔案的是同一個 Linux 帳號，沒有 `chattr +i` 的話，任何 agent 都能 `chmod` 之後改寫。
+- `chattr +i` 在核心層讓檔案不能變更。要寫入必須先 `chattr -i`，而這需要 root。
+- 這是整個系統最關鍵的安全性質。少了它，其他每一層都只是裝飾：一個認定政策「過時了」的 LLM 可以直接改寫它。
+- **sudo 的但書**。安裝程式不會設定 sudo。只有在 agent 使用的 Linux 帳號執行 sudo 需要密碼時，`chattr +i` 才擋得住 agent。如果這個帳號有免密碼 sudo（很多雲端映像檔會替預設帳號這樣設定），任何能用 shell 的 agent 都可以自己執行 `sudo chattr -i`，基線就從一道鎖變成只是政策。依賴它之前，先檢查 `/etc/sudoers` 和 `/etc/sudoers.d/` 裡有沒有 `NOPASSWD`。
 
-**為什麼有 `.expected-hashes` 檔**(而不是只信任 chattr):
-- chattr +i 阻止寫入但理論上夠聰明的攻擊者能繞過 filesystem 層竄改資料(原始 block device write 之類)。Defense in depth 說:也驗 hash。
-- 更實際的是:operator 透過 `scripts/edit-baseline.sh` 編輯後可能忘記 re-freeze。Watcher 抓到這個會 emit `baseline_immutability_lost` event。
+**為什麼還要 `.expected-hashes`**（而不是只相信 chattr）：
+- chattr +i 在設定期間會擋住寫入，但理論上有心的攻擊者可以在檔案系統層之下改資料（例如直接寫入 block device）。縱深防禦的原則是：雜湊也要驗。
+- 更實際的情況是：如果某個檔案失去了 `+i`（編輯被中斷，或有人手動 `chattr -i` 後忘了還原），watcher 會回報 `baseline_immutability_lost`，任何內容變動也會以 `baseline_hash_mismatch` 出現。
 
-**為什麼有 meta-hash**(`.expected-hashes.sha256`):
-- 這是 chicken-and-egg 修補。如果 `.expected-hashes` 自己可竄改,攻擊者可以**同步**改寫某 baseline 檔 + `.expected-hashes` 裡那行,雙改下 hash 檢查就破了。
-- Meta-hash 是 `.expected-hashes` 自己的 sha256,放在另一個檔。Watcher 在信任 `.expected-hashes` 之前先驗 meta-hash。要破這個,攻擊者要**同步改三個檔** — 而其中任何一個是 chattr +i 就斷鏈了。
+**為什麼還要 meta-hash**（`.expected-hashes.sha256`）：
+- 這是在解決雞生蛋的問題。如果 `.expected-hashes` 本身可以被竄改，攻擊者就能同時改寫某個基線檔案和它在 `.expected-hashes` 裡的那一行，讓雜湊檢查失效。
+- meta-hash 是 `.expected-hashes` 的 sha256，存在另一個檔案。watcher 先驗證 meta-hash，才信任 `.expected-hashes`。要突破它，攻擊者得同時改三個檔案，而只要其中任何一個還是 `chattr +i`，這條路就斷了。
 
-**編輯 baseline** 是 operator-only,透過 `scripts/edit-baseline.sh`。那個腳本:
-1. `sudo chattr -i` 目標檔 + 兩個 hash 檔
-2. 開 `$EDITOR`
-3. 重生 `.expected-hashes` 跟 `.expected-hashes.sha256`
-4. `sudo chattr +i` 全部
-5. Emit `operator_edited_baseline` journal event,`actor=operator`
+**編輯基線**只能由管理者透過 `scripts/edit-baseline.sh <檔名>` 進行。這個腳本會：
+1. 對目標檔和兩個雜湊檔執行 `sudo chattr -i`
+2. 用 `$EDITOR` 開啟檔案
+3. 重新產生 `.expected-hashes` 和 `.expected-hashes.sha256`
+4. 對目標檔和兩個雜湊檔執行 `sudo chattr +i`
+5. 附加一筆 `actor=operator` 的 `operator_edited_baseline` journal 事件
 
-如果你忘了步驟 4(re-freeze),watcher 60 秒內會發現並 emit `baseline_immutability_lost`。**沒有辦法靜默讓 baseline 維持可變。**
+只要有檔案處於可寫狀態，watcher 下一輪就會記下 `baseline_immutability_lost`，並且每分鐘重複，直到旗標恢復為止。前提是 watcher 還在跑（見 [§10](#10-已知限制)）。
 
-### 3.4 Watcher(純 bash,不是 LLM)
+注意：重跑 `scripts/all.sh` 會用 `templates/` 和 `config/machine.env` 重新產生基線，並覆蓋所有內容不同的已部署檔案。要長期保留的基線修改，請改在你 fork 的範本或設定裡，不要只改部署出去的那一份。
 
-純 bash 的 systemd user unit,在 `~/.config/systemd/user/openclaw-watcher.service`,每 60 秒觸發一次。它跑 `~/.openclaw/workspace/baseline/watcher.sh`(本身也是 chattr +i)。
+### 3.4 Watcher（確定性的 bash，不是 LLM）
 
-每個 tick 它:
-- 驗證所有 baseline 檔還是 `chattr +i`
-- 驗證所有 sha256 hash 跟 `.expected-hashes` 對得上
-- 驗證 `.expected-hashes` 自己的 hash 跟 `.expected-hashes.sha256` 對得上
-- 驗證 `openclaw-gateway` process 在跑
-- 每小時 emit 一次 `watcher_heartbeat` event,讓你知道 watcher 自己還活著
+`~/.config/systemd/user/openclaw-watcher.service` 這個 systemd user unit 會執行 `~/.openclaw/workspace/baseline/watcher.sh`（本身也是 `chattr +i`）。它是一個常駐迴圈，每輪之間休息 60 秒（`INTERVAL_SEC=60`）；失敗時 systemd 會在 30 秒後重新啟動它。
 
-異常 emit JSONL events 到 `~/.openclaw/workspace/evolution-journal.jsonl`。**Watcher 不對異常採取行動 — 只記錄。** Main agent(或 operator 下次進來)讀了再決定。
+每一輪，watcher 會：
+- 確認基線目錄裡每個 `*.yaml`、`*.md`、`*.sh` 檔，以及兩個雜湊檔，都還有 `chattr +i`
+- 用 `.expected-hashes.sha256` 驗證 `.expected-hashes` 的 meta-hash
+- 逐一驗證 `.expected-hashes` 裡的 sha256
+- 確認 OpenClaw gateway 程序還在執行
+- 每小時寫一筆 `watcher_heartbeat` 事件，讓你知道 watcher 本身還活著
 
-**為什麼純 bash 不是 LLM:**
-- LLM watcher 可以被吵贏。「這個檔案改變沒問題,因為 X。」純規則 watcher**沒得吵**。它算一個 hash、跟 fingerprint 比、不對就 emit 一個 JSONL event。**沒得協商。**
-- 核心原則:**會思考的 watcher 可以被說服去允許事情;只是一個寫保護檔的 watcher 不可妥協。**
+發現異常時，它會把 JSONL 事件寫進 `~/.openclaw/workspace/evolution-journal.jsonl`。watcher 不會處理異常，也不會發 Telegram 訊息，只負責記錄。由 main，或下次進來的管理者，讀了再決定。
 
-**為什麼用 systemd user unit 而不是 system unit:**
-- User unit 不需要 root。Watcher 跟 gateway 跑同一個 `ubuntu` user。
-- User unit 比較容易裝(`~/.config/systemd/user/`),不用改 `/etc/systemd/system/`。
-- 取捨:user unit 沒法 drop 需要 CAP_SYS_ADMIN 的 capabilities(`LockPersonality`、`MemoryDenyWriteExecute` 等)。Defense in depth 在這裡靠 policy + filesystem 層(`chattr +i`、sudo 限制),不是 kernel-namespace 層。Unit 檔有註記。
+**為什麼用純 bash，不用 LLM：**
+- LLM 做的 watcher 可以被說服：「這個檔案改動沒問題，因為 X。」規則式的 watcher 不行。它算雜湊、比對指紋，不符就寫一筆 JSONL 事件，沒有可以談判的地方。
+- 原則是：**需要思考的 watcher 可能被說服去放行；只是一支防寫腳本的 watcher 不會。**
 
-**為什麼 watcher 的檢查是極簡的:**
-- 每加一個檢查就多一個東西要維護。上面四個檢查是承重的。
-- 擴 watcher 是重決定,因為 watcher 自己 `chattr +i`。透過 `scripts/edit-baseline.sh` 編輯。
+**為什麼用 systemd user unit，不用 system unit：**
+- user unit 不需要 root，watcher 和 gateway 用同一個帳號執行。
+- user unit 裝在 `~/.config/systemd/user/`，不必動到 `/etc/systemd/system/`。
+- 取捨：有幾個強化選項只能用在 system unit，在 user 模式下會失敗（`LockPersonality`、`MemoryDenyWriteExecute`、`ProtectKernelTunables` 等），所以 unit 只保留 `ProtectSystem=strict`、`ReadOnlyPaths`/`ReadWritePaths`、`NoNewPrivileges`、`PrivateTmp` 和 `RestrictAddressFamilies`。而且這個 unit 屬於 agent 所用的帳號，這個帳號不用 sudo 就能把它停掉。停掉 watcher 是政策禁止（`disable_watcher`），不是技術上做不到。
 
-### 3.5 Cross-Patrol Heartbeat(Phase 2.5)
+**為什麼 watcher 的檢查這麼少：**
+- 每多一項檢查，就多一樣要維護的東西。上面四項是真正撐住系統的檢查。
+- 修改 watcher 本來就該是件慎重的事，因為 `watcher.sh` 是 `chattr +i`。要永久修改，請改你 fork 裡的 `lib/watcher.sh`，再重跑 `scripts/all.sh`。
 
-**決定性的 dead-man-switch:把「壞了會出聲的警報」換成「沒人用新心跳 dismiss 的警報才會出聲」**。
+### 3.5 交叉巡邏心跳（Phase 2.5）
 
-五個排程工作定期跑:
+確定性的 dead-man's switch。它不是「出事時響警報」，而是「**除非有新的心跳解除警報，否則就響**」。
 
-| Job | 預設排程 | 擁有者 |
+五個排程工作定期執行：
+
+| 工作（心跳名稱） | 預設排程 | 擁有者 | 逾時門檻 |
+|---|---|---|---|
+| `hermes_daily_doctor` | 每天 04:30（本地） | hermes-maintainer（OpenClaw cron） | 24h + 6h |
+| `hermes_upstream_watch` | 每天 05:00（本地） | hermes-maintainer（OpenClaw cron） | 24h + 6h |
+| `hermes_weekly_review` | 每週一 05:00（本地） | hermes-maintainer（OpenClaw cron） | 168h + 24h |
+| `hermes_monthly_compress` | 每月 1 日 05:30（本地） | hermes-maintainer（OpenClaw cron） | 720h + 72h |
+| `hermes_daily_study`（Hermes 工作名稱 `openclaw-daily-study`） | 每天 10:00 UTC | Hermes Agent（Hermes cron） | 24h + 6h |
+
+「本地」指的是 `machine.env` 裡的 `TZ_NAME`（預設 `America/New_York`）。五個排程都是 cron 表示式，可以在那裡修改。Hermes 的排程器用主機的時鐘，所以只有主機時鐘設為 UTC（雲端主機常見的預設）時，每日研究才會在 10:00 UTC 執行。
+
+每個工作的**第一步**都是寫心跳檔（時間戳記、週期、寬限）。接著巡邏另外四個心跳；只要有一個超過「週期加寬限」沒更新，就發出警報。心跳只證明工作有被觸發，不代表工作內容成功。
+
+四個 maintainer 工作會呼叫 `~/.local/bin/heartbeat-patrol --self <工作名稱>`。發現逾時的同伴時，腳本會附加一行到 `~/.openclaw/workspace/heartbeats/_alerts.log`；如果 `~/.config/heartbeat-patrol.env` 同時有 bot token 和 chat ID，就透過設定的 proxy 發 Telegram 訊息。Hermes 的工作用自己的檔案工具巡邏，透過它的 Telegram gateway 發警報；沒有設定 chat ID 時，改為附加到 `~/.hermes/heartbeats/_alerts.log`。警報不會去除重複：每個看到同一個逾時同伴的工作，都會再發一次。
+
+**為什麼 cron prompt 要先寫心跳**（而不是最後才寫）：
+
+這是吃過虧才學到的。巡邏指令原本放在 prompt 最後面，agent 會在呼叫巡邏腳本*之前*，就先把摘要（「Done. ... I did not run hermes update.」）當成最後回覆寫出來。OpenClaw 的 cron 框架把第一段文字摘要當成執行完成，於是後面的指令從來沒執行，心跳也就沒寫進去。把 `STEP 1: heartbeat-patrol` 放在 prompt 最前面，就能確保 agent 在產出最終摘要之前，已經寫好心跳、巡邏過同伴，即使後面的任務用完輪數，或分類器提早結束也一樣。見 `scripts/06-cron-setup.sh` 的 `heartbeat_prefix_for`。
+
+**為什麼要獨立的警報腳本**（`heartbeat-patrol`）：
+
+巡邏邏輯必須是確定性的。如果巡邏本身是 LLM 呼叫，它就會和被巡邏的 agent 有同樣的偏差問題。所以 `heartbeat-patrol` 是約 170 行的 bash：寫心跳、讀同伴、把「現在減去上次時間」和「週期加寬限」比較，逾時就用 curl 呼叫 Telegram。maintainer 這邊的警報路徑裡沒有 LLM。
+
+**為什麼是「新心跳解除警報」，而不是「失敗時發警報」：**
+
+如果警報是在失敗時才發，警報路徑本身就成了單一故障點。警報程式當掉，你就什麼都收不到。改成用心跳來解除警報，觸發警報的是「*沒有*動作」這件事，所以出問題的工作不必還活著也能讓你知道：下一個還活著的同伴巡邏時，就會發現那個過期的心跳。
+
+**為什麼每個 agent 用自己的 bot 發警報**（而不是共用一個）：
+
+不同的 bot，在你的 Telegram 裡就是不同的「聲音」。maintainer 的 bot 通知你，代表某個 maintainer 工作發現了逾時；Hermes 的 bot 發訊息，就是 Hermes 本人。某個 agent 出問題時，另一個 agent 的 bot 發的警報還是送得到。
+
+**Hermes 這邊的工作比較特別**。它用 Hermes 自己的 cron 排程器，而不是 OpenClaw cron，原因是：
+- OpenClaw cron 搭配 `--session isolated --agent X` 時，是以 OpenClaw subagent 的身分執行，不是 Hermes。
+- 每日研究要寫入 Hermes 自己的狀態（sessions、memories、skills），只有 Hermes 本身能乾淨地寫到那裡。
+- Hermes 的 shell 工具被 chroot 關在 sandbox 裡（§9 有更多說明），所以每日研究的 prompt 要求 Hermes 用原生的檔案工具，並使用**絕對路徑**，而不是呼叫放在 sandbox 外面的巡邏腳本。
+
+### 3.6 六個已知難題的立場
+
+長期運作的 agent 跑在正式主機上，一定得對六個已知難題表態。這個範本不宣稱解決了它們，但對每一個都有明確的立場。
+
+| 問題 | 立場 | 程式在哪裡 |
 |---|---|---|
-| `hermes_daily_doctor` | 04:30 local 每天 | hermes-maintainer (OpenClaw cron) |
-| `hermes_upstream_watch` | 05:00 local 每天 | hermes-maintainer (OpenClaw cron) |
-| `hermes_weekly_review` | Mon 05:00 local | hermes-maintainer (OpenClaw cron) |
-| `hermes_monthly_compress` | 1st 05:30 local | hermes-maintainer (OpenClaw cron) |
-| `openclaw-daily-study` | 10:00 UTC 每天 | Hermes Agent (Hermes cron) |
-
-每個在**成功時**寫一個 heartbeat 檔含當下 timestamp + interval + grace。然後巡邏其他四個 heartbeats;任何一個太久沒寫超過 `interval + grace`,就透過設定的 bot 發 Telegram alert。
-
-**為什麼 cron prompt 把 heartbeat 排在「第一」**(不是最後):
-
-我們**慘痛地**學到這個。當 patrol 呼叫是 prompt 的**後綴**時,agent 會在呼叫 patrol script 之前就把 summary(「Done. ... I did not run hermes update.」)寫成最後回覆。OpenClaw cron framework 把第一個文字 summary 當成 run 完成,所以後綴永遠不會 fire — heartbeat 永遠不會落地。把 `STEP 1: heartbeat-patrol` 放在 prompt 開頭保證 heartbeat 在 agent 產出 summary 之前先寫、先巡 peers,即使下游任務 turn-limit 用完或 classifier short-circuit。看 `scripts/06-cron-setup.sh:heartbeat_prefix_for`。
-
-**為什麼用獨立的 alerter script**(`heartbeat-patrol`):
-
-Patrol 邏輯**必須是決定性的**。如果 patrol 自己是 LLM 呼叫,它會跟被巡邏的 agent 有同樣的對齊失敗模式。所以 `heartbeat-patrol` 是 150 行 bash — 它寫一個 heartbeat、讀 peers、算 (now − last_timestamp)、跟 (interval + grace) 比、stale 時 curl Telegram。**Alert 路徑沒有 LLM。**
-
-**為什麼是「default broken alert,被 fresh heartbeat dismiss」而不是「壞了再警報」:**
-
-如果警報是「壞了再 fire」,警報路徑本身就變成 single point of failure。Alerter 掛了你就一片寂靜。改用「heartbeat = dismissal」的 pattern,**沒動作這件事**觸發警報,所以警報路徑不需要在跑就能告訴你 — 下一個還活著的 peer 巡邏時會抓到 stale-peer 然後 fire。
-
-**為什麼每個 agent 用自己的 bot 發 alert**(而不是共用一個 bot):
-
-不同 bot = Telegram client 裡不同的「聲音」。`@*_watchbot` 通知你時是 maintainer 抓到 staleness。`@*_hermesbot` 回覆時是 Hermes 自己。如果某個 agent 出問題,**另一個 agent 的 bot 還是能發出 alert**。
-
-**Hermes-side 的 cron 比較特別** — 用 Hermes 自己的 cron scheduler,不是 OpenClaw cron,因為:
-- OpenClaw cron 配 `--session isolated --agent X` 跑的是 OpenClaw subagent 身份,不是 Hermes。
-- Hermes 的 daily-study task 要寫 Hermes 自己的狀態(sessions、memories、skills)— 只有 Hermes 自己有那邊乾淨的寫入權。
-- Hermes 的 shell tool 是 chroot-jailed(§9 詳述),所以 daily-study cron 的 prompt 指示 Hermes 用它**原生**的 `filesystem_write` 工具加**絕對路徑**,而不是住在 jail 外面的 patrol script。
-
-### 3.6 六個已知難題我們怎麼面對
-
-長駐有認知能力的 agent 在生產主機上有六個已知難題,任何設計都得對它們採取立場。這個 template 不假裝完全解決,但對每個有明確的立場。
-
-| 問題 | 立場 | Code 在哪 |
-|---|---|---|
-| **Cold start** — 第一週行為跟穩態時質性不同 | Maintainer 的 daily-doctor cron 從第 1 天開始跑,所以 observability 不依賴 agent 已經值得信任 | `scripts/06-cron-setup.sh` 在裝完後立刻註冊 cron |
-| **Recursive upgrade** — agent 自己升自己 | `hermes update` 在 `forbidden_autonomous`;只有 operator | `templates/baseline.policy.yaml.tmpl:forbidden_actions[id=...]` |
-| **Taste drift** — agent 偏好跟 operator 分歧 | SOUL.md 跨 re-run 保留;maintainer 的週審查浮出 drift 信號 | `scripts/04-configure-hermes.sh` 只在 SOUL 缺檔時寫 |
-| **Approval fatigue** — operator 不再仔細看提案 | Drafts 進 inbox;不主動 push Telegram;operator 想看再拉 | `templates/SOUL.md.tmpl` 「Output 走檔案,不走 Telegram push」 |
-| **Token cost** — agent 自己思考很貴 | Daily 焦點輪換限制每天燃料;idempotency check 跳過已做工作 | `templates/hermes-daily-study-prompt.txt.tmpl` 「skip if already done today」 |
-| **Fleet sharing** — 跨機器協調 | 明確不在範圍內;一台機器一份 config | 完全沒 fleet 邏輯 |
+| **冷啟動**：第一週的行為和穩定後本質上不同 | maintainer 的 daily-doctor 工作從第一天就開始跑，所以可觀測性不必等 agent 先建立信任 | `scripts/06-cron-setup.sh` 在安裝後立刻註冊排程 |
+| **遞迴升級**：agent 自己更新自己 | `hermes update` 屬於 `forbidden_autonomous`，由管理者執行 | `templates/hermes-permissions.yaml.tmpl` 的 `change_budget.tier_examples.forbidden_autonomous`、`templates/hermes-maintainer-AGENTS.md.tmpl` |
+| **品味漂移**：agent 的偏好和管理者越差越遠 | SOUL.md 在重跑安裝時保留；maintainer 的每週回顧會浮現漂移的訊號 | `scripts/04-configure-hermes.sh` 只在 SOUL.md 不存在，或仍是 Hermes 安裝程式的預設內容時寫入 |
+| **審批疲勞**：管理者不再仔細看提案 | 草稿放進 inbox，不主動推 Telegram；低風險 pack 在額度內套用；管理者有空再來看 | `templates/SOUL.md.tmpl` 的「Output goes to FILES, not Telegram pushes」 |
+| **Token 成本**：agent 自己思考很花錢 | 依星期輪替，每天只做一件事；當天做過就跳過；prompt 限制每次 30 分鐘或 30 輪（只是指示，沒有強制） | `templates/hermes-daily-study-prompt.txt.tmpl` 的 STEP 3 |
+| **多機共用**：跨機器協調 | 明確不在範圍內：一台主機、一份設定 | 沒有任何多機邏輯 |
 
 ---
 
-## 4. 實作對照
+## 4. 實作導覽
 
-每個架構決定都對應到一段 code。這節按裝的順序走一遍,指出實現每一層的檔案。
+每個架構決定都有對應的程式碼。這一節照安裝順序走一遍，指出實作每一層的檔案。
 
 ### 4.1 Repo 結構
 
 ```
 openclaw-hermes-watcher/
-├── README.md                          ← 你正在讀(英文)
-├── README.zh-TW.md                    ← 繁體中文(這頁)
-├── ARCHITECTURE.md                    ← 架構深入(精簡;這個 README 才是長篇版)
+├── README.md                          ← 英文說明
+├── README.zh-TW.md                    ← 你正在看的繁體中文版
+├── ARCHITECTURE.md                    ← 較短的架構文件（完整版在這份 README）
 ├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── SECURITY.md
 ├── LICENSE                            ← Apache-2.0
-├── .gitignore                         ← machine.env + heartbeat-patrol.env + .pii-patterns.local
+├── .gitignore                         ← machine.env、machine.env.secrets、heartbeat-patrol.env、.pii-patterns.local、.render-cache/
+│
+├── .github/
+│   ├── workflows/test.yml             ← CI：bash -n、PII 檢查、範本產生的冒煙測試
+│   ├── workflows/pages.yml            ← 把 site/ 發布到 GitHub Pages
+│   ├── ISSUE_TEMPLATE/                ← bug 回報、功能建議
+│   └── PULL_REQUEST_TEMPLATE.md
 │
 ├── config/
-│   └── machine.env.example            ← per-machine config 模板(operator 複製 + 編)
+│   ├── machine.env.example            ← 每台主機的設定，不含機密（管理者複製後編輯）
+│   └── machine.env.secrets.example    ← bot token（實際檔案不進 git）
 │
-├── lib/                               ← 通用 shell,直接搬,不渲染
-│   ├── heartbeat-patrol.sh            ← 決定性 dead-man-switch alerter(150 行)
-│   └── watcher.sh                     ← baseline sentinel(200 行,每 60 秒跑)
+├── examples/
+│   ├── README.md
+│   ├── solo-dev.env                   ← 一個開發者、一台機器，不含 Phase 2
+│   └── shared-server.env              ← 多服務主機，含 Phase 1.5 和 Phase 2
 │
-├── templates/                         ← .tmpl 檔,經 envsubst-with-allowlist 渲染
-│   ├── machine-mission.md.tmpl        ← 這台主機是做什麼的(部署後 chattr +i)
-│   ├── baseline.policy.yaml.tmpl      ← 硬底線:forbidden_actions、immutable_paths、...
-│   ├── hermes-permissions.yaml.tmpl   ← Hermes 可 / 不可
-│   ├── SOUL.md.tmpl                   ← Hermes 的身份(初次裝後跨 re-run 保留)
-│   ├── USER.md.tmpl                   ← Hermes 對 operator 的認知
-│   ├── MEMORY.md.tmpl                 ← Hermes 累積知識的 bootstrap
-│   ├── hermes-daily-study-prompt.txt.tmpl  ← 每日 cron prompt(heartbeat-FIRST)
-│   ├── hermes-maintainer-AGENTS.md.tmpl    ← maintainer subagent 角色說明
-│   ├── hermes-maintainer-IDENTITY.md.tmpl  ← maintainer 簡短身份
+├── lib/                               ← 通用 shell，原樣使用，不經範本處理
+│   ├── heartbeat-patrol.sh            ← 確定性的 dead-man's switch 警報程式（約 170 行）
+│   └── watcher.sh                     ← 基線哨兵（約 200 行，60 秒一輪）
+│
+├── templates/                         ← .tmpl 檔，用加白名單的 envsubst 產生
+│   ├── machine-mission.md.tmpl        ← 這台主機的用途（部署後 chattr +i）
+│   ├── baseline.policy.yaml.tmpl      ← 硬性底線：immutable_paths、forbidden_actions、pack_kinds……
+│   ├── hermes-permissions.yaml.tmpl   ← Hermes 可以與不可以做的事、變更額度
+│   ├── SOUL.md.tmpl                   ← Hermes 的身分（第一次安裝後重跑會保留）
+│   ├── USER.md.tmpl                   ← Hermes 眼中的管理者
+│   ├── MEMORY.md.tmpl                 ← Hermes 累積知識的起點
+│   ├── hermes-daily-study-prompt.txt.tmpl  ← 每日排程的 prompt（先寫心跳）
+│   ├── hermes-maintainer-AGENTS.md.tmpl    ← maintainer subagent 的角色說明
+│   ├── hermes-maintainer-IDENTITY.md.tmpl  ← maintainer 的簡短身分
 │   └── openclaw-watcher.service.tmpl       ← systemd user unit
 │
-├── scripts/                           ← 安裝腳本,按編號順序跑
-│   ├── 00-prereqs.sh                  ← 檢 OpenClaw、gh、jq、systemd、machine.env
-│   ├── 01-render.sh                   ← templates/ → .render-cache/ via envsubst
-│   ├── 02-deploy-baseline.sh          ← chattr +i baseline,裝 + 啟 watcher
-│   ├── 03-install-hermes.sh           ← curl | bash 上游 installer (--skip-setup)
-│   ├── 04-configure-hermes.sh         ← 建 profile、寫 SOUL/USER/MEMORY
+├── scripts/                           ← 安裝腳本，依編號順序執行
+│   ├── 00-prereqs.sh                  ← 檢查工具、OpenClaw、gh 登入、workspace、machine.env
+│   ├── 01-render.sh                   ← templates/ → .render-cache/（envsubst）
+│   ├── 02-deploy-baseline.sh          ← 基線設為 chattr +i，安裝並啟動 watcher
+│   ├── 03-install-hermes.sh           ← curl | bash 上游安裝程式（--skip-setup）
+│   ├── 04-configure-hermes.sh         ← 建立 profile，寫入 SOUL/USER/MEMORY
 │   ├── 05-register-maintainer.sh      ← 註冊 hermes-maintainer OpenClaw subagent
-│   ├── 06-cron-setup.sh               ← 裝 heartbeat-patrol + 5 個 cron jobs
-│   ├── 07-smoke-test.sh               ← 端到端驗證
-│   ├── 08-finalize.sh                 ← summary + 後續步驟
-│   ├── 09-talk-helpers.sh             ← Phase 1.5:talk-* ACP shortcut wrappers
-│   ├── 10-tg-maintainer.sh            ← Phase 1.5:maintainer 的 Telegram bot
-│   ├── 11-tg-hermes.sh                ← Phase 2:Hermes 自己的 Telegram gateway
-│   ├── all.sh                         ← orchestrator(冪等跑 00-11)
-│   ├── edit-baseline.sh               ← operator-only:安全編輯 chattr +i 檔
+│   ├── 06-cron-setup.sh               ← 安裝 heartbeat-patrol 和 5 個排程工作
+│   ├── 07-smoke-test.sh               ← 端到端驗證（41 項檢查）
+│   ├── 08-finalize.sh                 ← 摘要與下一步
+│   ├── 09-talk-helpers.sh             ← Phase 1.5：talk-* ACP 捷徑
+│   ├── 10-tg-maintainer.sh            ← Phase 1.5：maintainer 的 Telegram bot
+│   ├── 11-tg-hermes.sh                ← Phase 2：Hermes 自己的 Telegram gateway
+│   ├── all.sh                         ← 總控腳本（依序執行 00 到 11）
+│   ├── edit-baseline.sh               ← 只給管理者：安全地編輯 chattr +i 檔案
 │   └── lib/
-│       ├── common.sh                  ← shared helpers(load_config、emit_journal_event)
-│       └── render-template.sh         ← envsubst 配明確 allowlist
+│       ├── common.sh                  ← 共用函式（load_config、emit_journal_event）
+│       └── render-template.sh         ← 加上明確白名單的 envsubst
 │
 ├── docs/
-│   ├── INSTALL.md                     ← 逐步走法
-│   ├── PHASE-2-TELEGRAM.md            ← Phase 2 的 @BotFather flow
-│   └── ROLLBACK.md                    ← 解除安裝步驟
+│   ├── INSTALL.md                     ← 逐步安裝說明
+│   ├── PHASE-2-TELEGRAM.md            ← Phase 2 的 @BotFather 流程
+│   └── ROLLBACK.md                    ← 移除步驟
+│
+├── site/                              ← 專案介紹頁（由 site/page.json 產生）
 │
 └── tests/
-    ├── check-no-pii.sh                ← CI 守衛:committed 檔不含 operator literals
-    ├── .pii-patterns.local.example    ← operator-specific pattern 模板(複製為 gitignored 版)
-    └── (.pii-patterns.local — gitignored)
+    ├── check-no-pii.sh                ← CI 防護：commit 的檔案裡不能有管理者的實際資料
+    ├── .pii-patterns.local.example    ← 管理者自用比對規則的範本（複製出的檔案不進 git）
+    └── （.pii-patterns.local，不進 git）
 ```
 
-### 4.2 Phase 1 — 安裝
+### 4.2 Phase 1：安裝 Hermes、maintainer、基線與 watcher
 
-裝的核心。順序重要,靠檔名(`00-` 到 `08-`)強制。
+整個安裝的核心。順序很重要，由檔名（`00-` 到 `08-`）決定。
 
-**`00-prereqs.sh`** 驗主機就緒:
-- bash 4+、jq、curl、envsubst、sha256sum、lsattr/chattr、systemd --user、gh CLI 已認證
-- OpenClaw 已裝且 `openclaw status` 正常
-- `~/.openclaw/workspace/` 存在(main agent bootstrap 過)
-- `loginctl enable-linger` 設好(user systemd 登出後不死)
-- `config/machine.env` 存在且最低欄位填過
+**`00-prereqs.sh`** 檢查主機是否就緒：
+- bash 4+、jq、curl、envsubst、git、sha256sum、lsattr/chattr、`systemctl --user`
+- OpenClaw 已安裝，且 `openclaw status` 正常
+- gh CLI 已登入
+- `~/.openclaw/workspace/` 存在（main agent 已 bootstrap）
+- `config/machine.env` 存在
+- 已啟用 `loginctl` linger，登出後 user service 才會繼續跑（沒啟用只會警告，不算失敗）
 
-快速失敗,給 actionable 錯誤訊息。**不改任何狀態。**
+有問題就立刻停下，並給出可以照做的錯誤訊息，不會改動任何狀態。
 
-**`01-render.sh`** 渲染 templates:
-- 透過 `scripts/lib/common.sh` 的 `load_config` 載入 `config/machine.env`
-- 從已裝二進位自動偵測 `KNOWN_GOOD_*_VERSION`(若還沒裝就 fallback `unknown` — 步驟 03 會修)
-- 呼叫 `render_template`(在 `scripts/lib/render-template.sh`),裡面包 `envsubst` 加**明確 allowlist** 的變數名單
-- 輸出到 `.render-cache/`(gitignored)
+**`01-render.sh`** 產生範本：
+- 透過 `scripts/lib/common.sh` 的 `load_config` 載入 `config/machine.env`（有 `config/machine.env.secrets` 的話也一起載入）
+- 從已安裝的程式自動偵測 `KNOWN_GOOD_*_VERSION`（還沒安裝的會是 `unknown`，第 03 步會修正）
+- 呼叫 `scripts/lib/render-template.sh` 裡的 `render_template`，用明確的變數白名單包住 `envsubst`
+- `lib/watcher.sh` 原樣複製，unit 檔裡的 `__HOME__` 和 `__MACHINE_NAME__` 用 `sed` 填入
+- 全部輸出到 `.render-cache/`（不進 git）
 
-**為什麼 envsubst 配 allowlist**(而不是裸 envsubst):裸 envsubst 把輸入裡的任何 `$VAR` 都換掉。Templates 合法地含 `$()` shell snippet 跟應該保留為 literal 的 `$VAR` 引用。Allowlist 讓我們明確說「只換這些」,其他保留 literal。
+**為什麼 envsubst 要搭配白名單**（而不是直接用 envsubst）：直接用 envsubst 會替換輸入裡所有的 `$VAR`。但範本裡本來就有 `$()` shell 片段，以及應該保持原樣的 `$VAR`。白名單明確指定哪些變數要替換，其餘保持原文。
 
-**`02-deploy-baseline.sh`** 上 chattr +i 那層:
-1. 讀 `.render-cache/`
-2. 偵測既有 baseline + 內容不同就解凍(`sudo chattr -R -i`)
-3. 把渲染檔 copy 到 `~/.openclaw/workspace/baseline/`
-4. 重生 `.expected-hashes`(所有 `*.yaml`/`*.md`/`watcher.sh` 的 sha256sum)和 `.expected-hashes.sha256`(meta-hash)
-5. 在 `~/.config/systemd/user/openclaw-watcher.service` 裝 systemd user unit(`__HOME__` 已展開)
-6. **`sudo chattr +i`** baseline 檔 + 兩個 hash 檔
-7. `systemctl --user enable + start openclaw-watcher`
-8. Bootstrap `~/.openclaw/workspace/upgrade-packs/inbox/`、`heartbeats/`,stub `openclaw-local-diff.md`
+**`02-deploy-baseline.sh`** 部署 `chattr +i` 這一層：
+1. 確認 `.render-cache/` 裡五個產生好的檔案都在
+2. 如果已部署的基線是凍結狀態，而且內容和新產生的不同，就先解凍（`sudo chattr -R -i`）
+3. 把有變動的檔案複製到 `~/.openclaw/workspace/baseline/`
+4. 雜湊對不上時，重新產生 `.expected-hashes`（所有 `*.yaml`、`*.md` 和 `watcher.sh` 的 sha256）以及 meta-hash `.expected-hashes.sha256`
+5. 安裝並啟用 `~/.config/systemd/user/openclaw-watcher.service`
+6. 對四個基線檔和兩個雜湊檔執行 **`sudo chattr +i`**
+7. 啟動 `openclaw-watcher`
+8. 建立 `~/.openclaw/workspace/upgrade-packs/inbox/` 和 `heartbeats/`；`openclaw-local-diff.md` 不存在時建立空白範本
 
-如果 watcher 起不來,部署中止 — 留一個沒 enforce 的 baseline 比沒 baseline 更糟。
+watcher 起不來的話，部署會中止：沒人執行的基線，比沒有基線更糟。
 
-**`03-install-hermes.sh`** 跑上游 Hermes installer:
-- 檢查 hermes 是否已裝(冪等跳過)
-- 跑 `curl -fsSL .../install.sh | bash -s -- --skip-setup`(--skip-setup 讓 wizard 不自動把 OpenClaw state 遷移進 Hermes)
-- 裝完後**重跑 `01-render.sh` 跟 `02-deploy-baseline.sh --force`** 修掉 hermes 還沒在 PATH 時烙進的「unknown」hermes_version(這是 ultrareview 抓到的教訓之一)
+**`03-install-hermes.sh`** 執行上游的 Hermes 安裝程式：
+- 已經裝過 `hermes` 的話，回報版本後直接結束（可重複執行）
+- 否則執行 `curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/${HERMES_INSTALL_REF}/scripts/install.sh | bash -s -- --skip-setup`。加 `--skip-setup` 是因為第 04 步會自己設定 profile；腳本也從不執行 `hermes claw migrate`，那會把 OpenClaw 的 SOUL、記憶、skills 和金鑰搬進 Hermes。
+- `HERMES_INSTALL_REF` 是 `main`（會變動的分支）時發出警告；出現 `openclaw-imports` skills 目錄（代表還是跑了遷移）時也會警告
+- 全新安裝後，**重跑 `01-render.sh` 和 `02-deploy-baseline.sh --force`**，把 Hermes 還不在 PATH 時寫進基線的 `unknown` 換成實際版本（§9 第 6 條）
 
-**`04-configure-hermes.sh`** 建 Hermes profile:
-- `hermes profile create openclaw-evolution`
-- 把 SOUL.md 寫到 profile dir(per-profile)
-  - **只在缺檔或跟 template 完全相同時寫** — 跨 re-run 保留 Hermes 自我修正過的 SOUL(週四 rotation 讓 Hermes 修剪過時條目)
-- 把 USER.md 跟 MEMORY.md 寫到 `~/.hermes/memories/`(global,跨 profiles 共享,根據 Hermes docs)
-  - MEMORY.md 若含 `version at install: unknown` 會刷新(早期 botched 安裝的痕跡)
-- 設 profile config 預設(Phase 1 gateway off)
+**`04-configure-hermes.sh`** 建立 Hermes profile：
+- `hermes profile create openclaw-evolution --no-alias`，已存在就沿用
+- 把 SOUL.md 寫進 profile 目錄
+  - **只在檔案不存在，或仍是 Hermes 安裝程式的預設內容時寫入**。和範本不同的 SOUL.md 會保留，因為那可能是 Hermes 在週六輪替時自我修正過的，也可能是你手動改的。
+- USER.md 和 MEMORY.md 不存在時，寫到 `~/.hermes/memories/`（全域，依 Hermes 文件由所有 profile 共用）
+  - MEMORY.md 如果還有 `version at install: unknown` 或 `Bootstrapped at TBD`（先前安裝失敗留下的痕跡），就重新寫入
+- 把 `messaging.telegram/discord/slack.enabled` 設為 `false`（Phase 1 沒有 Hermes gateway）
 
-**`05-register-maintainer.sh`** 註冊 OpenClaw subagent:
-- 預先放 `~/hermes-maintainer/.openclaw-ws/{AGENTS,IDENTITY,USER,MACHINE_LOG}.md` 到位(從渲染 templates)
-- `openclaw agents add hermes-maintainer --workspace ~/hermes-maintainer/.openclaw-ws/`
-- 更新 `agents.defaults.subagents.allowAgents` 加入 `hermes-maintainer`(保留你已有的 project subagents)
-- 重啟 `openclaw-gateway` 讓新 subagent 可達
+**`05-register-maintainer.sh`** 註冊 OpenClaw subagent：
+- 在 `~/hermes-maintainer/.openclaw-ws/` 用產生好的範本寫入 `AGENTS.md`、`IDENTITY.md`，並在不存在時建立 `USER.md`、`MACHINE_LOG.md` 和 `study-notes/README.md`
+- `openclaw agents add hermes-maintainer --non-interactive --workspace ~/hermes-maintainer/.openclaw-ws/`（已註冊就跳過）
+- 把 `hermes-maintainer` 加進 `agents.defaults.subagents.allowAgents`，保留原本已有的專案 subagent
+- 重新啟動 `openclaw-gateway`，讓新的 subagent 可以使用
 
-**`06-cron-setup.sh`** 是最內容多的腳本:
-1. 從 `lib/heartbeat-patrol.sh` 裝 `~/.local/bin/heartbeat-patrol`(chmod 755)
-2. 從 `machine.env` 值寫 `~/.config/heartbeat-patrol.env`(chmod 600)
-3. 種子 heartbeat 檔配當下 timestamp(避免首次 patrol false-positive)
-4. 透過 `openclaw cron add` 註冊四個 maintainer cron jobs,每個帶:
-   - **Heartbeat-FIRST 前綴**(`STEP 1`)在實際工作之前呼叫 `heartbeat-patrol --self <jobname>`
-   - 原本工作當 `STEP 2`
-   - `SUMMARY_TAIL` 指示 agent summary 只列 positive actions(workaround OpenClaw cron classifier 的「did not」denial-token 假警報)
-5. 透過 `hermes -p openclaw-evolution cron create` 註冊 Hermes-side daily-study cron
-   - 把 `templates/hermes-daily-study-prompt.txt.tmpl` 渲染成真 prompt
-   - 排在 `0 10 * * *` UTC(06:00 EDT,maintainer crons 跑完之後)
-   - 冪等:有重複先 loop 移除再加
+**`06-cron-setup.sh`** 是最複雜的腳本。它會：
+1. 從 `lib/heartbeat-patrol.sh` 安裝 `~/.local/bin/heartbeat-patrol`（權限 755）
+2. 同時知道巡邏用的 bot token 和 chat ID 時，寫入 `~/.config/heartbeat-patrol.env`（權限 600）。token 預設用 maintainer bot 的（沒有的話用 main bot 的），chat ID 預設用 `OPERATOR_TELEGRAM_USER_ID`。兩者缺一時，巡邏只會寫進 `_alerts.log`。
+3. 五個心跳檔不存在時先建立，避免第一次巡邏誤報
+4. 用 `openclaw cron add --session isolated --agent hermes-maintainer --no-deliver --light-context` 註冊四個 maintainer 工作（遇到不支援 `--light-context` 的版本，會拿掉後重試）。每個 prompt 都包含：
+   - **心跳優先的前綴**（`STEP 1`），在做任何事之前先執行 `heartbeat-patrol --self <工作名稱>`
+   - 真正的任務，放在 `STEP 2`
+   - `SUMMARY_TAIL`，要求 agent 的摘要只列出做了哪些事（避開 OpenClaw cron 分類器把「did not」判成錯誤的問題）
+   同名的既有工作會先用迴圈全部移除，重複的工作不會越積越多。
+5. 用 `hermes -p openclaw-evolution cron create` 註冊 Hermes 這邊的工作
+   - prompt 是產生好的 `templates/hermes-daily-study-prompt.txt.tmpl`
+   - 預設排程 `0 10 * * *`，本意是 10:00 UTC（紐約夏令時間 06:00，maintainer 的工作都跑完之後）
+   - 可重複執行：重新加入前，先用迴圈移除同名的既有工作
 
-**`07-smoke-test.sh`** 驗 39+ 個 invariants 並計算 pass/fail。任一 FAIL 就非零退出。
+**`07-smoke-test.sh`** 執行 41 項檢查：工具、基線檔案、`chattr +i` 旗標、雜湊、watcher unit、心跳檔、Hermes profile、五個排程工作和 subagent。最後三項（巡邏試跑、`openclaw status`、`hermes doctor`）只會警告。只要有任何一項 FAIL，就以非零狀態結束，`all.sh` 也會跟著停下。
 
-**`08-finalize.sh`** 印 summary + 「下一步」指向 Phase 1.5/Phase 2。
+**`08-finalize.sh`** 寫一筆 `deploy_finalized` journal 事件，並印出摘要，以及 Phase 1.5 和 Phase 2 的下一步。
 
-### 4.3 Phase 1.5 — talk-helpers + maintainer Telegram
+### 4.3 Phase 1.5：talk-helpers 與 maintainer 的 Telegram
 
-**`09-talk-helpers.sh`** 在 `~/.local/bin/` 產 wrapper script:
-- `talk-main` — `openclaw acp --session "agent:main:main"`
-- `talk-maintainer` — `openclaw acp --session "agent:hermes-maintainer:main"`
-- `talk-<你的 project subagent>` — 從 `openclaw agents list --json` 自動發現
-- `talk-hermes` — `hermes -p openclaw-evolution`(不同二進位;不走 OpenClaw ACP)
+**`09-talk-helpers.sh`** 在 `~/.local/share/openclaw-talk-helpers/` 產生包裝腳本，並在 `~/.local/bin/` 建立指向它們的 symlink：
+- `talk-main`：`openclaw acp --session "agent:main:main"`
+- `talk-maintainer`：`openclaw acp --session "agent:hermes-maintainer:main"`
+- `talk-<agent>`：`openclaw agents list --json` 找到的其他 agent 各一個
+- `talk-hermes`：`hermes -p openclaw-evolution`（不同的執行檔，不走 OpenClaw ACP）
 
-冪等 symlink。隨時 re-run 都會刷新。
+隨時可以重跑，包裝腳本會重新產生。OpenClaw 2026.5.20 以後，agent 清單會以扁平的 JSON 陣列回傳，`main` 上的腳本解析不了，只會退回建立 `talk-main` 和 `talk-maintainer`。尚未合併的 PR #1 修正了這個問題。
 
-**`10-tg-maintainer.sh`** 替 `hermes-maintainer` 註冊 Telegram bot:
-- 從 `machine.env` 讀 `TG_BOT_HERMES_MAINTAINER_TOKEN`。空就整個跳過。
-- 透過 `openclaw gateway telegram add`(或 `openclaw config set` fallback)加 bot
-- 重啟 `openclaw-gateway`
-- 印下一步手動指示:傳訊息給 bot 收 pairing code、回傳碼授權
+**`10-tg-maintainer.sh`** 替 `hermes-maintainer` 接上 Telegram bot：
+- 從 `config/machine.env.secrets` 讀取 `TG_BOT_HERMES_MAINTAINER_TOKEN`，是空的就跳過這個階段。
+- 用 `openclaw config set` 設定 `channels.telegram.accounts.hermes-maintainer.botToken`（token 相同就不動，不同就更新）。第一次設定時，也會把這個帳號的 `proxy` 設為 `HEARTBEAT_PATROL_PROXY`。
+- 重新啟動 `openclaw-gateway`
+- 印出手動配對步驟：傳訊息給 bot，收到配對碼後回傳給它完成授權
 
-配對後可以透過 Telegram 跟 `hermes-maintainer` 聊天。Maintainer 也用這個 bot 做 cross-patrol alert(Phase 2.5)— 看 [§3.5](#35-cross-patrol-heartbeatphase-25)。
+配對完成後，就能在 Telegram 上和 `hermes-maintainer` 對話。四個 maintainer 工作的巡邏警報由 `heartbeat-patrol` 發送，預設用的就是這個 bot 的 token（見 [§3.5](#35-交叉巡邏心跳phase-25)）。
 
-### 4.4 Phase 2 — Hermes 自己的 Telegram gateway
+### 4.4 Phase 2：Hermes 的 Telegram gateway
 
-**`11-tg-hermes.sh`** 啟用 Hermes 自己的 gateway:
-- 從 `machine.env` 讀 `TG_BOT_HERMES_AGENT_TOKEN`。空就跳過。
-- 在 Hermes profile config 設 `messaging.telegram.enabled true` + bot_token + allowed_user_id
-- `hermes -p openclaw-evolution gateway install --force` 建 profile-scoped systemd unit `hermes-gateway-openclaw-evolution.service`
-- **`systemctl --user restart`**(不是 `start`)— 這樣 token rotation 在 re-run 時才會生效
+**`11-tg-hermes.sh`** 啟用 Hermes 自己的 gateway：
+- 從 `config/machine.env.secrets` 讀取 `TG_BOT_HERMES_AGENT_TOKEN`，是空的就跳過。
+- 在 profile 設定中設定 `messaging.telegram.enabled true`、`messaging.telegram.bot_token`，以及（有 `OPERATOR_TELEGRAM_USER_ID` 時）`messaging.telegram.allowed_user_id`
+- `hermes -p openclaw-evolution gateway install --force` 建立 profile 專屬的 user unit `hermes-gateway-openclaw-evolution.service`
+- 用 **`systemctl --user restart`**（不是 `start`），重跑時換過的 token 才會生效
 
-之後可以直接傳訊給 Hermes。根據它 SOUL contract,它**不主動 push** — 只回應你的訊息。
+之後你就能直接傳訊息給 Hermes。依照它的 SOUL，它不會主動推播，只會回覆你。唯一的例外是 [§3.5](#35-交叉巡邏心跳phase-25) 提到的每日研究巡邏警報。
 
-### 4.5 Phase 2.5 — daily cron + 心跳互巡
+### 4.5 Phase 2.5：每日排程與交叉巡邏心跳
 
-這個 phase 沒有獨立 script — 在 Phase 1 的 `06-cron-setup.sh` 裡就啟用。Hermes daily 的 cron 註冊跟 heartbeat-patrol 安裝都在那。
+這個階段沒有專屬腳本；Phase 1 的 `06-cron-setup.sh` 會安裝巡邏腳本，並註冊全部五個工作。
 
-**Hermes daily-study prompt**(`templates/hermes-daily-study-prompt.txt.tmpl`)有四步:
+**Hermes 每日研究的 prompt**（`templates/hermes-daily-study-prompt.txt.tmpl`）開頭是 PATH CONVENTIONS 區塊，接著是五個步驟：
 
-1. **STEP 0** — 透過 `date -u +%A` 確定今天 UTC 是星期幾(template 不能用 `$(date)`,因為 envsubst 不展開 `$()`,且 Hermes prompt 是 text-not-shell)
-2. **STEP 1** — heartbeat **先**寫。用 `filesystem_write`(**不**用 shell — Hermes shell 是 chroot-jailed,會寫到 sandbox 內的 `home/.hermes/heartbeats/`,不是真正 `/home/<user>/.hermes/heartbeats/`)
-3. **STEP 2** — 巡邏四個 maintainer heartbeat;有 stale 透過 Telegram alert
-4. **STEP 3** — 今天的 rotation 任務(Mon: commits、Tue: subsystem 深讀、Wed: issues themes、Thu: self-correct、Fri: pack-readiness、Sat: Hermes self、Sun: rest)。`MEMORY.md` 已有今日 heading 就 skip。
-5. **STEP 4** — 簡短回報
+- **PATH CONVENTIONS**：Hermes 的檔案工具會把 `~` 解析到 sandbox 裡，所以 prompt 要求它使用 `/home/ubuntu/...` 的絕對路徑。這也是 agent 用其他帳號執行時需要修改範本的原因（見 [§10](#10-已知限制)）。
+- **STEP 0**：用 `date -u` 取得今天的 UTC 星期、日期和 ISO 週數。範本本身不能用 `$(date)`，因為 envsubst 不會展開 `$()`。
+- **STEP 1**：先寫心跳，而且用檔案工具，不用 shell。shell 被 chroot 關住，會寫到 sandbox 裡的 `home/.hermes/heartbeats/` 副本，而不是真正的目錄。
+- **STEP 2**：讀取四個 maintainer 心跳，有逾時就發警報（設定了 chat ID 就透過 gateway 發 Telegram，否則在 `~/.hermes/heartbeats/_alerts.log` 加一行）。
+- **STEP 3**：今天的任務；如果 `MEMORY.md` 已經有今天日期的標題就跳過：
+  - 週一：服務訊號（挑一個過去 7 天沒讀過的服務，讀它的 MACHINE_LOG）
+  - 週二：上游 OpenClaw 過去 7 天的 commit 和未關閉的 issue
+  - 週三：社群生態系，依 ISO 週數除以 4 的餘數挑來源（整理清單、`openclaw-skill` topic、`openclaw-plugin` topic、官方範例與 fork）
+  - 週四：綜合整理，在 inbox 起草 `manifest.yaml`
+  - 週五：檢查 pack 是否就緒，替通過的草稿寫 `summary.md` 和 `rollback-plan.md`
+  - 週六：自我修正（整理 MEMORY、把反覆出現的模式升級成 skill），並查看 Hermes 的新版本
+  - 週日：休息
+- **STEP 4**：簡短的摘要回覆。
 
-輪換給寬廣覆蓋而不每天重活。平均每天 ~10–30k tokens。Token cost 在 [§3.6](#36-六個已知難題我們怎麼面對) 討論。
+輪替讓涵蓋面夠廣，又不必每天做重工作。prompt 要求 Hermes 在 30 分鐘或 30 輪內完成 STEP 3；這只是指示，沒有強制，repo 裡也沒有實測的 token 成本數字。
 
 ---
 
 ## 5. 前置條件
 
-主機要先有:
+主機上必須已經有：
 
-1. **OpenClaw** 裝好且跑著(`openclaw status` 正常;gateway 在跑)
-2. **OpenClaw main agent workspace** 在 `~/.openclaw/workspace/`
-3. **gh CLI** 已認證為你的 GitHub user(`gh auth status` 綠燈)
-4. **bash 4+**、`jq`、`curl`、`envsubst`(來自 `gettext`)、`sha256sum`、`lsattr`/`chattr`、`systemd --user` 加 linger enabled
-5. **Phase 1.5 / Phase 2 可選**:Telegram 帳號 + 透過 `@BotFather` 拿到的 bot token
+1. **有 systemd user service 的 Linux**，並啟用 linger（`sudo loginctl enable-linger $USER`），登出後服務才會繼續跑
+2. **OpenClaw**，已安裝並在執行（`openclaw status` 正常，gateway 在跑）
+3. **OpenClaw main agent 的 workspace**，位於 `~/.openclaw/workspace/`
+4. **gh CLI**，已用你的 GitHub 帳號登入（`gh auth status` 顯示正常）
+5. **bash 4+**、`git`、`jq`、`curl`、`envsubst`（來自 `gettext`）、`sha256sum`、`lsattr`/`chattr`
+6. 安裝用的帳號要有 **sudo**，用來執行 `chattr`（請看 [§3.3](#33-硬性基線chattr-i--sha256--meta-hash) 的但書）
+7. **選用**，Phase 1.5 和 Phase 2 才需要：Telegram 帳號，以及從 `@BotFather` 取得的 bot token
 
-這個 template **不會**裝 OpenClaw 本身 — 那是你的事,OpenClaw 有自己的 installer。
+這個範本**不會**安裝 OpenClaw；OpenClaw 有自己的安裝程式。
 
 ---
 
-## 6. 檔案落點(裝完之後長這樣)
+## 6. 安裝後的檔案位置
 
-| Path | 擁有者 | 用途 |
+| 路徑 | 擁有者 | 用途 |
 |---|---|---|
-| `~/.openclaw/workspace/baseline/` | operator (chattr +i) | 硬政策:`baseline.policy.yaml`、`hermes-permissions.yaml`、`machine-mission.md`、`watcher.sh`、sha256 fingerprints |
-| `~/.openclaw/workspace/heartbeats/` | maintainer crons | 每個 maintainer cron job 一個 `*.last` |
-| `~/.openclaw/workspace/upgrade-packs/inbox/` | Hermes(寫)/ main(讀) | Hermes 提案的 draft packs |
-| `~/.openclaw/workspace/openclaw-local-diff.md` | operator | local diff 對上游的活文件 |
-| `~/.openclaw/workspace/evolution-journal.jsonl` | OpenClaw main | append-only event log |
-| `~/.hermes/profiles/openclaw-evolution/` | Hermes | profile 狀態:SOUL.md、sessions、skills、gateway |
-| `~/.hermes/heartbeats/` | Hermes daily-study cron | `hermes_daily_study.last` |
-| `~/.hermes/memories/` | Hermes | 全域 MEMORY.md、USER.md(跨 profile 共享) |
-| `~/hermes-maintainer/.openclaw-ws/` | maintainer subagent | bootstrap 檔 + study-notes |
-| `~/.local/bin/heartbeat-patrol` | scripts/06 | dead-man-switch alerter |
-| `~/.config/heartbeat-patrol.env` | operator (chmod 600) | bot token + chat ID |
-| `~/.config/systemd/user/openclaw-watcher.service` | scripts/02 | systemd unit |
+| `~/.openclaw/workspace/baseline/` | 管理者（`chattr +i`） | 硬性政策：`baseline.policy.yaml`、`hermes-permissions.yaml`、`machine-mission.md`、`watcher.sh`、sha256 指紋 |
+| `~/.openclaw/workspace/heartbeats/` | maintainer 的工作 | 每個 maintainer 工作一個 `*.last` 檔，以及 `_alerts.log` |
+| `~/.openclaw/workspace/upgrade-packs/inbox/` | Hermes（寫）/ main（讀） | Hermes 起草的 pack，以及 `_questions-for-operator.md` |
+| `~/.openclaw/workspace/openclaw-local-diff.md` | 管理者 | 記錄本機相對上游修改的活文件 |
+| `~/.openclaw/workspace/evolution-journal.jsonl` | watcher、安裝程式、maintainer、main | 只能附加的事件紀錄 |
+| `~/.hermes/profiles/openclaw-evolution/` | Hermes | profile 目錄：SOUL.md、設定 |
+| `~/.hermes/sessions/`、`~/.hermes/skills/` | Hermes | session 紀錄、產生的 skill |
+| `~/.hermes/heartbeats/` | Hermes 每日研究工作 | `hermes_daily_study.last`；沒設定 chat ID 時還有 `_alerts.log` |
+| `~/.hermes/memories/` | Hermes | 全域的 MEMORY.md、USER.md（所有 profile 共用） |
+| `~/hermes-maintainer/.openclaw-ws/` | maintainer subagent | bootstrap 檔、MACHINE_LOG.md、研究筆記 |
+| `~/.local/bin/heartbeat-patrol` | scripts/06 | dead-man's switch 警報程式 |
+| `~/.config/heartbeat-patrol.env` | scripts/06（權限 600） | 巡邏用的 bot token、chat ID、proxy |
+| `~/.local/bin/talk-*` | scripts/09 | 指向 `~/.local/share/openclaw-talk-helpers/` 包裝腳本的 symlink |
+| `~/.config/systemd/user/openclaw-watcher.service` | scripts/02 | watcher 的 unit |
+| `hermes-gateway-openclaw-evolution.service` | `hermes gateway install`（Phase 2） | Hermes 的 Telegram gateway（user unit） |
 
 ---
 
-## 7. 日常營運
+## 7. 日常運作
 
-每天會發生什麼:
+平常的一天：
 
-- **04:30 local** — `hermes_daily_doctor` cron fire。Maintainer 跑 `hermes doctor`、寫一行到 `MACHINE_LOG.md`、健康就不通知。Heartbeat 寫入。
-- **05:00 local** — `hermes_upstream_watch` fire。Maintainer 掃 `NousResearch/hermes-agent` 看新 tag。有 release 就寫 study-note + journal event `hermes_release_review_pending` 等你 review。
-- **05:00 local Mon** — `hermes_weekly_review` fire。Maintainer 跑 `hermes -p openclaw-evolution insights --days 7` 寫週摘要到 `~/hermes-maintainer/.openclaw-ws/study-notes/`。
-- **05:30 local 1st of month** — `hermes_monthly_compress` fire。Maintainer 跑 `/compress` 壓縮 Hermes session memory。
-- **10:00 UTC 每天** — `openclaw-daily-study` fire。Hermes 自己醒來、按星期幾輪換焦點、寫到 `MEMORY.md` / `skills/` / `upgrade-packs/inbox/`。
+- **本地 04:30**：`hermes_daily_doctor`。maintainer 執行 `hermes doctor`，在自己的 `MACHINE_LOG.md` 加一行，並寫一筆 `hermes_doctor_report` journal 事件（有問題時另外寫一份研究筆記）。
+- **本地 05:00**：`hermes_upstream_watch`。maintainer 用 `gh release list --repo NousResearch/hermes-agent --limit 5` 對照基線裡的 `known_good.hermes_version`。有較新的版本時，寫一份研究筆記和一筆 `hermes_release_review_pending` 事件給你。
+- **每週一本地 05:00**：`hermes_weekly_review`。maintainer 執行 `hermes -p openclaw-evolution insights --days 7`，把每週回顧寫到 `~/hermes-maintainer/.openclaw-ws/study-notes/`，並重新產生 Hermes 會讀的三份摘要。
+- **每月 1 日本地 05:30**：`hermes_monthly_compress`。maintainer 對 Hermes 的 session 記憶執行 `/compress`，並記下壓縮前後的大小。
+- **每天 10:00 UTC**：`openclaw-daily-study`。Hermes 醒來，挑當天的任務，把發現寫進 `MEMORY.md`、`skills/` 或 `upgrade-packs/inbox/`。
 
-**真的有東西壞才會收到 Telegram。健康營運是安靜的。**
+除非有工作錯過時段，或你主動傳訊息給 bot，Telegram 都會保持安靜。watcher 的發現（`+i` 旗標不見、雜湊不符、gateway 停了）只會寫進 evolution journal，所以進來看的時候記得查它。
 
-要 check in:
+要檢查狀況：
 ```bash
-# 最近 journal events
+# 最近的 journal 事件
 tail -50 ~/.openclaw/workspace/evolution-journal.jsonl | jq -c '{ts,event,actor}'
 
-# Watcher + gateway 還活著
+# watcher 的發現（不含每小時的心跳）
+jq -c 'select(.actor == "watcher" and .event != "watcher_heartbeat")' ~/.openclaw/workspace/evolution-journal.jsonl | tail
+
+# watcher 和 gateway 是否還活著
 systemctl --user status openclaw-watcher openclaw-gateway
 
-# Hermes profile 健康
+# Hermes profile 狀態
 hermes -p openclaw-evolution config show
 hermes doctor
 
-# Cron job 狀態
+# 排程工作
 openclaw cron list
 hermes -p openclaw-evolution cron list
 
-# Heartbeat 新鮮度
+# 心跳新不新
 ls -la ~/.openclaw/workspace/heartbeats/ ~/.hermes/heartbeats/
 
-# Patrol alerts(若有)
-tail ~/.openclaw/workspace/heartbeats/_alerts.log
+# 巡邏警報（如果有）
+tail ~/.openclaw/workspace/heartbeats/_alerts.log ~/.hermes/heartbeats/_alerts.log
 ```
 
-要跟 agents 對話:
+要和 agent 對話：
 ```bash
 talk-main           # OpenClaw main router
 talk-maintainer     # hermes-maintainer subagent
-talk-hermes         # Hermes Agent (openclaw-evolution profile)
+talk-hermes         # Hermes Agent（openclaw-evolution profile）
 ```
 
 ---
 
 ## 8. 長期維護
 
-- **每週**:看一眼 journal `tail ~/.openclaw/workspace/evolution-journal.jsonl | jq -c .`,看 `~/hermes-maintainer/.openclaw-ws/study-notes/` 最新週審查。
-- **每月**:讀累積的 study notes;考慮 `~/.openclaw/workspace/openclaw-local-diff.md` 是否要更新你新加的 local 客製。
-- **OpenClaw 上游 release 時**:Hermes 把 pack draft 到 `upgrade-packs/inbox/<tag>/`。Maintainer 透過 journal `hermes_proposed` 標記。你 review、決定後讓 main apply(或拒絕)。
-- **Hermes 自身 release 時**:maintainer 透過 `hermes_release_review_pending` 標記。你決定要不要跑 `hermes update`(它在 `forbidden_autonomous`)。
+- **每週**：看一下 journal（`tail ~/.openclaw/workspace/evolution-journal.jsonl | jq -c .`），再讀 `~/hermes-maintainer/.openclaw-ws/study-notes/` 裡最新的每週回顧。
+- **每月**：讀累積的研究筆記；如果你在本機做了新的客製，更新 `~/.openclaw/workspace/openclaw-local-diff.md`。
+- **Hermes 完成一個 pack 時**：maintainer 會寫一筆 `hermes_proposed` journal 事件。main 驗證後，低風險和中風險的 pack 可以在變更額度和維護時段內套用，其他的等你決定。你也可以透過平常的管道，請 main 套用或退回某個 pack。
+- **上游 Hermes 發布新版時**：maintainer 會寫一筆 `hermes_release_review_pending`。要不要執行 `hermes update` 由你決定（agent 不行，它屬於 `forbidden_autonomous`）。
 
-更新這個 template 自身:`git pull upstream main`(設好 upstream remote 之後,看 `docs/INSTALL.md`),然後重跑 `bash scripts/all.sh`。冪等。
+更新這個範本本身：先依 `docs/INSTALL.md` 加上 upstream remote，再 `git pull upstream main`，然後重跑 `bash scripts/all.sh`。它可以重複執行，但會重新產生並取代已部署的基線（見 [§3.3](#33-硬性基線chattr-i--sha256--meta-hash)）。
 
 ---
 
-## 9. 血淚經驗(都已經寫進 code 結構裡)
+## 9. 學到的教訓
 
-下面每一條都是生產部署或三輪 `/ultrareview` 雲端 code review 抓到的真實 bug,以及現在已經結構化進這個 template 的修法。
+下面每一條都是真實的 bug，來自這個範本所抽取的正式部署，或是第一次發布前的 `/ultrareview` 程式碼審查，以及現在已經內建在範本結構裡的修正。
 
-| # | 教訓 | 落點 |
+| # | 教訓 | 現在的位置 |
 |---|---|---|
-| 1 | **Cron prompt heartbeat 排「第一」不是「最後」**。後綴模式時,agent 在呼叫 patrol 之前就先寫 summary 當 final response — heartbeat 永遠不落地。 | `scripts/06-cron-setup.sh:heartbeat_prefix_for` |
-| 2 | **Hermes shell tool 是 chroot-jailed**。呼叫 `~/.local/bin/heartbeat-patrol` 會把 heartbeat 靜默地寫到 sandbox 內 `home/.hermes/heartbeats/` 而不是真實路徑。 | `templates/hermes-daily-study-prompt.txt.tmpl` STEP 1 用 `filesystem_write` 不用 shell |
-| 3 | **OpenClaw cron classifier 把「did not」denial token 標 error**。Agent 確認句如「I did not run hermes update」會讓成功 run 顯示 status=error。 | `scripts/06-cron-setup.sh:SUMMARY_TAIL` 指示 agent summary 只列 positive actions |
-| 4 | **Watcher 在 journal 不可寫時要 `continue` 不要 fall-through**。否則接下來的 immutability/hash/gateway 檢查會靜默 no-op 對死 journal。 | `lib/watcher.sh` main loop 有 `if ! check_journal_writable; then sleep + continue` |
-| 5 | **Heartbeat-patrol 必須驗證 write 真的落地**。沒有 `set -euo pipefail` 加 read-back check,失敗的 redirect(chattr +i、ENOSPC、RO remount)會 log 到 stderr 但仍印 OK。Dead-man-switch 會說謊。 | `lib/heartbeat-patrol.sh` 有 `set -euo pipefail` + `grep -qxF` 寫後驗證 |
-| 6 | **`KNOWN_GOOD_HERMES_VERSION="unknown"`** 會在 `01-render.sh` 跑於 `03-install-hermes.sh` 之前時被烙進 chattr +i baseline。一旦凍結,要 sudo 才修得了。 | `03-install-hermes.sh` 在 hermes 進 PATH 後重跑 `01-render` + `02-deploy-baseline --force` |
-| 7 | **`SOUL.md` 跨 re-run 必須保留**。無條件 `cp` 會毀掉週週累積的 Hermes 自我修正(週四 rotation 修剪過時項)。 | `04-configure-hermes.sh` 只在缺檔或完全相同時寫 |
-| 8 | **`systemctl --user restart` 不要 `start`** for credential rotation。已 active 時 `start` 是 no-op;daemon 拿著舊 token。 | `11-tg-hermes.sh` 用 `restart`(對應 `10-tg-maintainer.sh`) |
-| 9 | **`edit-baseline.sh` 必須先 `load_config`** 才引用 `$OPERATOR_HANDLE` — 沒有的話,在檔案已經 re-frozen 後 post-edit journal call 會 set -u crash。 | `scripts/edit-baseline.sh` 在 source `common.sh` 後呼叫 `load_config` |
-| 10 | **Hermes daily-study `$(date +%A)` 不會展開**,因為 envsubst 只處理 `${VAR}`。Template 必須讓 Hermes 在 runtime 自己決定。 | `templates/hermes-daily-study-prompt.txt.tmpl` STEP 0 跑 `date -u +%A` |
-| 11 | **空 Telegram chat ID** 會插值成 `chat  via your gateway`(literal 雙空格),把 Hermes 搞混。Prompt 現在明確檢查 chat ID 不為空。 | `templates/hermes-daily-study-prompt.txt.tmpl:STEP 2` 有 empty-string fallback |
-| 12 | **PII allowlist 必須 per-match,不是 per-line**。早期版本比對整個 grep 行;含一個公網 IP 跟一個 RFC1918 IP 的同一行會被誤放,因為該行含 allowlist 的 RFC1918 prefix。 | `tests/check-no-pii.sh:run_check` 用 `grep -oE` 做 per-match 比對 |
-| 13 | **PII allowlist 對 IP-shape 必須 prefix-anchor**。Substring containment 讓公網 IP 漏網,只要它們十進位形式裡某段含 allowlist 的 RFC1918 prefix(例如某個公網 IP 第二段剛好是 `10`,就會 match `10.` allowlist 條目)。現在用 `[[ $match == $allowed* ]]` 對 IP。 | `tests/check-no-pii.sh:is_allowlisted` 拆 IP_PREFIX_ALLOWLIST vs SUBSTRING_ALLOWLIST |
-| 14 | **`tests/check-no-pii.sh` 自己不能含 operator literals**。早期版本把私人識別字串硬編成 regex literal;script 自我排除所以 check 綠燈而 literals 躺在 committed 檔。 | `tests/check-no-pii.sh` 只有 generic 結構 patterns;literals 在 gitignored `.pii-patterns.local` |
-| 15 | **`heartbeat-patrol --self`(沒值)不能 set -u crash**。用 `${2:-}` 加 friendly usage 路徑。 | `lib/heartbeat-patrol.sh` 引數解析 |
-| 16 | **`while read` 必須救援沒結尾換行的檔案**。`\|\| [ -n "$line" ]` 救 operator 沒帶 closing `\n` 加的最後一行(通常是最近加的)。 | `tests/check-no-pii.sh` 讀 patterns 檔的 loop |
-| 17 | **`emit_journal_event` 預設 actor=`installer`,不是 `main`**。Install scripts 把動作標 "main" 會誤導 rescue triage。`edit-baseline.sh` 明確傳 `actor="operator"`。 | `scripts/lib/common.sh:emit_journal_event` |
+| 1 | **cron prompt 要先寫心跳，不是最後才寫**。巡邏指令放在最後時，agent 會在呼叫巡邏之前就把摘要當成最後回覆寫出來，心跳從沒寫進去。 | `scripts/06-cron-setup.sh` 的 `heartbeat_prefix_for` |
+| 2 | **Hermes 的 shell 工具被 chroot 關住**。呼叫 `~/.local/bin/heartbeat-patrol` 會默默把心跳寫進 sandbox 內部的 `home/.hermes/heartbeats/`，而不是真正的路徑。 | `templates/hermes-daily-study-prompt.txt.tmpl` 的 STEP 1 用檔案工具，不用 shell |
+| 3 | **OpenClaw cron 分類器會把「did not」這類否定句判成錯誤**。像「I did not run hermes update」這樣的確認句，會讓成功的執行顯示 status=error。 | `scripts/06-cron-setup.sh` 的 `SUMMARY_TAIL` 要求 agent 只列出做了哪些事 |
+| 4 | **journal 壞掉時，watcher 必須 `continue`，不能繼續往下跑**。否則 journal 無法寫入時，不可變旗標、雜湊和 gateway 的檢查結果都會默默消失。 | `lib/watcher.sh` 主迴圈：`if ! check_journal_writable; then sleep + continue` |
+| 5 | **heartbeat-patrol 必須確認真的寫進去了**。沒有 `set -euo pipefail` 加上回讀檢查，寫入失敗（chattr +i、ENOSPC、唯讀重新掛載）只會在 stderr 留一行，卻照樣印出「OK」。dead-man's switch 會說謊。 | `lib/heartbeat-patrol.sh` 有 `set -euo pipefail`，寫入後再用 `grep -qxF` 確認 |
+| 6 | **`KNOWN_GOOD_HERMES_VERSION="unknown"`** 會在 `01-render.sh` 早於 `03-install-hermes.sh` 執行時，被寫進 `chattr +i` 的基線。一旦凍結，要 sudo 才能修。 | `03-install-hermes.sh` 安裝後重跑 `01-render` 和 `02-deploy-baseline --force` |
+| 7 | **`SOUL.md` 必須在重跑時保留**。無條件 `cp` 會毀掉 Hermes 好幾週的自我修正（週六的輪替會整理過時的內容）。 | `04-configure-hermes.sh` 只在檔案不存在，或仍是 Hermes 安裝程式的預設內容時寫入 |
+| 8 | **換 token 要用 `systemctl --user restart`，不是 `start`**。unit 已在執行時 `start` 不會有動作，daemon 會繼續用舊 token。 | `11-tg-hermes.sh` 用 `restart`（和 `10-tg-maintainer.sh` 重啟 gateway 的做法一致） |
+| 9 | **`edit-baseline.sh` 必須先呼叫 `load_config`**，才能用 `$OPERATOR_HANDLE`。少了它，編輯後寫 journal 的那一步會在 `set -u` 下崩潰，而且是在檔案已經重新凍結之後。 | `scripts/edit-baseline.sh` 在 source `common.sh` 之後呼叫 `load_config` |
+| 10 | **每日研究範本裡的 `$(date +%A)` 不會展開**，因為 envsubst 只處理 `${VAR}`。範本必須讓 Hermes 在執行時自己判斷今天星期幾。 | `templates/hermes-daily-study-prompt.txt.tmpl` 的 STEP 0 執行 `date -u +%A` |
+| 11 | **Telegram chat ID 是空的**時，會被代換成 `chat  via your gateway`（中間兩個空格），讓 Hermes 搞混。prompt 現在會明確檢查 chat ID 不是空的。 | `templates/hermes-daily-study-prompt.txt.tmpl` 的 STEP 2 有空字串的替代做法 |
+| 12 | **PII 白名單必須逐一比對抓到的字串，不能整行比對**。早期版本比對整行 grep 結果，同一行同時有公網 IP 和 RFC1918 IP 時，只因為行內某處有白名單裡的 RFC1918 前綴，就整行放過。 | `tests/check-no-pii.sh` 的 `run_check` 對 `grep -oE` 抓到的每個字串分別比對 |
+| 13 | **PII 白名單對 IP 格式必須從開頭比對前綴**。用「包含子字串」比對時，只要公網 IP 的文字裡剛好有白名單的 RFC1918 前綴就會漏掉（第二段是 `10` 的公網 IP 會符合 `10.` 這一條）。IP 現在改用 `[[ $match == $allowed* ]]`。 | `tests/check-no-pii.sh` 的 `is_allowlisted` 分開 IP_PREFIX_ALLOWLIST 和 SUBSTRING_ALLOWLIST |
+| 14 | **`tests/check-no-pii.sh` 本身不能含有管理者的實際資料**。早期版本把私人識別字串直接寫成 regex；腳本會排除自己，所以檢查通過了，那些字串卻留在 commit 進去的檔案裡。 | `tests/check-no-pii.sh` 只放通用的結構比對；實際字串放在不進 git 的 `.pii-patterns.local` |
+| 15 | **`heartbeat-patrol --self`（沒給值）不能在 `set -u` 下崩潰**。用 `${2:-}`，並顯示友善的用法說明。 | `lib/heartbeat-patrol.sh` 的參數解析 |
+| 16 | **`while read` 必須救回結尾沒有換行的最後一行**。`\|\| [ -n "$line" ]` 會保留管理者加上去、但沒有以 `\n` 結尾的最後一行。 | `tests/check-no-pii.sh` 讀取 patterns 檔的迴圈 |
+| 17 | **`emit_journal_event` 預設的 actor 是 `installer`，不是 `main`**。安裝腳本把動作記成「main」做的，會誤導救援時的判斷。`edit-baseline.sh` 會明確傳入 `actor="operator"`。 | `scripts/lib/common.sh` 的 `emit_journal_event` |
 
-這些教訓的價值來自於**真的在生產環境跑一段時間 + 把結果送 code review**。它們現在是結構性的 — template 不會 regress。
+這些教訓來自實際在正式環境跑一段時間，再把結果拿去做程式碼審查。它們現在是結構的一部分，範本不會在這些地方悄悄退步。
 
 ---
 
 ## 10. 已知限制
 
-- **Watcher 偵測不到自己被停**。停掉的 process 不 emit event。在 `baseline.policy.yaml` `forbidden_actions[id=disable_watcher]` 標 `todo_implement: cross_unit_liveness_check`。緩解:cross-patrol heartbeat 抓 missed runs;若 watcher 跟 patrol 雙死,系統會靜默 drift。
-- **Hermes installer 透過 `curl | bash`** 從可設定的 git ref 抓。預設 `main` 跟著上游;在 `machine.env` 用 `HERMES_INSTALL_REF` pin 到 tag 才能 reproducible install。我們**還沒**驗證 install.sh 內容的 sha256。
-- **還沒 CI workflow**。PR 要手動 syntax check(`bash -n scripts/*.sh`)跟跑 `tests/check-no-pii.sh`。
-- **Examples 目錄是空的**。`examples/solo-dev.env`、`examples/shared-server.env` 等應該在 v0.2 ship。
+- **基線有多強，取決於 sudo 的設定**。安裝程式不會設定 sudo。如果 agent 使用的 Linux 帳號有免密碼 sudo，能用 shell 的 agent 就可以自己執行 `sudo chattr -i`（見 [§3.3](#33-硬性基線chattr-i--sha256--meta-hash)）。
+- **watcher 沒有保護自己**。它的 unit 屬於 agent 所用的帳號，不用 sudo 就能停掉。正常停止時會寫一筆 `watcher_stopped` 事件，之後就沒有任何東西注意到它不見了。watcher 每小時會寫一筆 `watcher_heartbeat`，但目前沒有工作去檢查它。`baseline.policy.yaml` 裡的 `disable_watcher` 標著 `todo_implement: cross_unit_liveness_check`。交叉巡邏心跳抓得到漏跑的工作，但 watcher 一旦停了，它的檢查也就跟著停了。
+- **大部分禁止行為是政策，不是程式**。11 項 `forbidden_actions` 中有 8 項標為 `todo_implement`。`remove_baseline` 和 `chattr_minus_i` 有 `chattr +i` 和 watcher 撐著；其餘靠 main agent 在套用 pack 前自己檢查政策。變更額度也是由 main agent 計算，不是 repo 裡的程式。
+- **每日研究的 prompt 寫死了 `/home/ubuntu`**。PATH CONVENTIONS 區塊直接寫出 `/home/ubuntu/...` 給 Hermes 的檔案工具用。agent 用其他帳號執行的話，安裝前要先改 `templates/hermes-daily-study-prompt.txt.tmpl`。
+- **OpenClaw 2026.5.20 以後的版本**。設定路徑是以 OpenClaw v2026.5.x 驗證的。在 2026.5.20 以後，`main` 上的 `09-talk-helpers.sh` 只會建立 `talk-main` 和 `talk-maintainer`；修正在尚未合併的 PR #1。
+- **巡邏警報預設經過 proxy**。`heartbeat-patrol` 透過 `HEARTBEAT_PATROL_PROXY`（預設 `http://127.0.0.1:8118`）發送 Telegram 訊息。把它設成空字串也不會取消 proxy，因為 `load_config` 會把預設值填回去。主機上沒有這個 proxy 的話，警報只會寫進 `_alerts.log`。
+- **預算只是指示**。每日研究 30 分鐘、30 輪的預算是 prompt 裡的指示，沒有強制，也沒有實測的 token 成本數字。
+- **Hermes 安裝程式用 `curl | bash` 取得**，來源是可設定的 git ref。預設的 `main` 會跟著上游變動；要能重現安裝，請在 `machine.env` 用 `HERMES_INSTALL_REF` 指定 tag。安裝腳本的 checksum 沒有驗證。
+- **活動狀況**。`main` 最後一次 commit 是 2026-05-07（v0.1.7），PR #1 從 2026-05-23 開著至今。
 
 ---
 
 ## 11. 授權
 
-Apache-2.0。看 [LICENSE](LICENSE)。
+Apache-2.0。見 [LICENSE](LICENSE)。
 
 ## 相關專案
 
-- [OpenClaw](https://docs.openclaw.ai) — agent kernel。本 template 透過它的公開 CLI(`openclaw cron`、`openclaw agents`、`openclaw config`)整合;**從不**修改 OpenClaw 已安裝的 code。`openclaw upgrade` 不會被我們踩到。
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — 長駐 agent runtime。我們用 Hermes 上游 installer 裝它,然後透過 Hermes 公開 CLI 配置**一個** profile(`openclaw-evolution`)。**從不**修改 Hermes 本身;`hermes update`(operator 批准的)會乾乾淨淨地走過。
+- [OpenClaw](https://docs.openclaw.ai)：agent 核心。本範本透過它的公開 CLI（`openclaw cron`、`openclaw agents`、`openclaw config`）整合，**從不修改** OpenClaw 已安裝的程式碼，所以 `openclaw upgrade` 不會受到本範本放在磁碟上的任何東西影響。
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent)：長期運作的 agent 執行環境。本範本用 Hermes 的上游安裝程式安裝它，再透過 Hermes 的公開 CLI 設定**一個** profile（`openclaw-evolution`）。它**從不修改** Hermes 本身；管理者執行的 `hermes update` 可以順利完成。
