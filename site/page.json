@@ -5,7 +5,7 @@
   "mark": "HW",
   "palette": "moss",
   "default_branch": "main",
-  "verified": "2026-09-30",
+  "verified": "2026-10-01",
   "language": "Shell",
   "license": {
     "spdx": "Apache-2.0",
@@ -539,8 +539,8 @@
       "zh": "目前的樣子。"
     },
     "intro": {
-      "en": "A template extracted from a working deployment and migration-tested on a real host since v0.1.4. No changes on main since May 2026.",
-      "zh": "從實際運作的部署抽出來的範本，v0.1.4 起在真實主機上做過遷移測試。2026 年 5 月以後，main 分支沒有變動。"
+      "en": "A template extracted from a working deployment and migration-tested on a real host since v0.1.4. No feature changes since May 2026; an October 2026 cleanup fixed docs, template wording, the CI render check, and an install summary that printed the patrol bot token.",
+      "zh": "從實際運作的部署抽出來的範本，v0.1.4 起在真實主機上做過遷移測試。2026 年 5 月以後沒有新功能；2026 年 10 月的整理修正了文件、範本用字、CI 的渲染檢查，以及安裝摘要會印出巡邏 bot token 的問題。"
     },
     "works": [
       {
@@ -632,14 +632,14 @@
         "en": "Last commit",
         "zh": "最後提交"
       },
-      "value": "2026-05-07"
+      "value": "2026-10-01"
     },
     {
       "label": {
         "en": "Verified",
         "zh": "查核日期"
       },
-      "value": "2026-09-30"
+      "value": "2026-10-01"
     }
   ],
   "links": [
