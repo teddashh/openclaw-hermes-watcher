@@ -81,6 +81,8 @@ bash scripts/all.sh
 
 This runs steps 00 to 11 in order. Each step is idempotent, so it is safe to re-run after editing `machine.env` or fixing an error. The Hermes installer (step 03) takes 10 to 20 minutes the first time (Python 3.11 install + extension build).
 
+Step 00 checks the pre-requisites from section 1, lists every one that is missing, and stops before anything is installed. For example, if `gh CLI authenticated` fails, run `gh auth login` interactively and start again.
+
 ## 5. Verify
 
 ```bash
@@ -91,7 +93,6 @@ If anything fails, the script prints what's missing. Common issues:
 
 - `openclaw status not OK`: run `openclaw doctor`
 - `hermes doctor reports issues`: usually missing API keys; see [Phase 2 setup](PHASE-2-TELEGRAM.md)
-- `gh CLI authenticated` failing: run `gh auth login` interactively
 
 ## 6. Pair Telegram bots (Phase 1.5+)
 
