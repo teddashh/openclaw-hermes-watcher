@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for thinking about it. This template is opinionated by design — most decisions trace back to a real production incident or a 4-AI architecture review. Before opening a PR, it's usually worth checking the [CHANGELOG](CHANGELOG.md) "Why" sections to see whether your change runs against an explicit prior decision.
+Thanks for thinking about it. This template is opinionated by design: most decisions trace back to a real production incident or a 4-AI architecture review. Before opening a PR, it's usually worth checking the [CHANGELOG](CHANGELOG.md) "Why" sections to see whether your change runs against an explicit prior decision.
 
 ## Quick path
 
@@ -30,10 +30,10 @@ Thanks for thinking about it. This template is opinionated by design — most de
 
 ## What changes are less likely to land
 
-- Adding a new agent role to the four-role split — that's a load-bearing architectural decision, has friction-with-debate-distillation
-- Changing the file-only inter-role contract to RPC — same
-- Introducing LLM-as-judge into Layer 0 — explicitly rejected; see ARCHITECTURE.md §3.4 / §3.5
-- "Cleaner" rewrites that drop production-tested edge cases (most of the script complexity exists for a reason — see CHANGELOG)
+- Adding a new agent role to the four-role split: that's a load-bearing architectural decision, has friction-with-debate-distillation
+- Changing the file-only inter-role contract to RPC: same
+- Introducing LLM-as-judge into Layer 0: explicitly rejected; see README.md §3.4 / §3.5
+- "Cleaner" rewrites that drop production-tested edge cases (most of the script complexity exists for a reason; see CHANGELOG)
 - Adding telemetry/observability that ships to a third-party endpoint by default
 
 If you're proposing one of these, please open an issue first to discuss the tradeoff before writing code.

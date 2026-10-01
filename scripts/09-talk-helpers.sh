@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 09-talk-helpers.sh — generate `talk-<agent>` ACP wrapper scripts.
+# 09-talk-helpers.sh: generate `talk-<agent>` ACP wrapper scripts.
 #
 # Discovers registered OpenClaw agents and creates one wrapper per agent in
 # ~/.local/bin/talk-<name>, plus a `talk-hermes` wrapper for Hermes itself.
@@ -52,7 +52,7 @@ agents_json=$(openclaw agents list --json 2>/dev/null || echo '{}')
 agent_names=$(echo "$agents_json" | jq -r '.agents // [] | map(.name // .id) | .[]' 2>/dev/null || true)
 
 if [ -z "$agent_names" ]; then
-    warn "Could not parse 'openclaw agents list --json' — falling back to defaults"
+    warn "Could not parse 'openclaw agents list --json', falling back to defaults"
     agent_names="main
 hermes-maintainer"
 fi

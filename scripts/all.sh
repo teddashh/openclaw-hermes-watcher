@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# all.sh — orchestrate the full install, in order.
+# all.sh: orchestrate the full install, in order.
 # Idempotent: each step is safe to re-run.
 
 set -euo pipefail

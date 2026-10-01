@@ -1,7 +1,7 @@
-# tests/.pii-patterns.local — operator-specific PII patterns to grep for.
+# tests/.pii-patterns.local: operator-specific PII patterns to grep for.
 #
 # Copy this file to tests/.pii-patterns.local (gitignored) and add YOUR own
-# private identifiers — strings that should never accidentally appear in
+# private identifiers: strings that should never accidentally appear in
 # committed files because they leak who you are or what host this is.
 #
 # Format: one pattern per line. Lines starting with # are comments. Patterns

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 08-finalize.sh — emit a "deploy_finalized" journal event and print a
+# 08-finalize.sh: emit a "deploy_finalized" journal event and print a
 # friendly summary of the install state.
 
 set -euo pipefail
@@ -13,6 +13,13 @@ load_config
 section "Finalize"
 
 emit_journal_event deploy_finalized "machine=$MACHINE_NAME operator=$OPERATOR_HANDLE"
+
+# Report whether a patrol bot is configured without printing the token itself.
+if [ -n "${HEARTBEAT_PATROL_BOT_TOKEN:-}" ]; then
+    PATROL_BOT_STATUS="(configured)"
+else
+    PATROL_BOT_STATUS="(NOT configured: alerts log to file only)"
+fi
 
 cat <<EOF
 ${GREEN}=== openclaw-hermes-watcher install complete ===${NC}
@@ -30,13 +37,13 @@ Cron jobs scheduled:
   - openclaw-daily-study      $CRON_HERMES_DAILY_STUDY_UTC UTC (Hermes-side)
 
 Cross-patrol heartbeat:
-  - bot:    ${HEARTBEAT_PATROL_BOT_TOKEN:+(configured)}${HEARTBEAT_PATROL_BOT_TOKEN:-(NOT configured — alerts log to file only)}
+  - bot:    ${PATROL_BOT_STATUS}
   - chat:   ${HEARTBEAT_PATROL_CHAT_ID:-(none)}
 
 Next steps:
   - bash scripts/09-talk-helpers.sh       # talk-* ACP shortcuts
-  - bash scripts/10-tg-maintainer.sh      # Phase 1.5 — maintainer's Telegram bot
-  - bash scripts/11-tg-hermes.sh          # Phase 2 — Hermes Agent's Telegram bot
+  - bash scripts/10-tg-maintainer.sh      # Phase 1.5: maintainer's Telegram bot
+  - bash scripts/11-tg-hermes.sh          # Phase 2: Hermes Agent's Telegram bot
 
 To verify health any time:
   systemctl --user status openclaw-watcher openclaw-gateway

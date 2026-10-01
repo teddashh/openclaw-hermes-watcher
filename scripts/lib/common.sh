@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# common.sh — shared helpers for openclaw-hermes-watcher install scripts.
+# common.sh: shared helpers for openclaw-hermes-watcher install scripts.
 # Source this from each script's preamble.
 
 # Color codes for terminal output (no-op if non-TTY).
@@ -16,7 +16,7 @@ warn()  { echo "${YELLOW}[WARN]${NC} $*"; }
 die()   { echo "${RED}[FAIL]${NC} $*" >&2; exit 1; }
 section() { echo; echo "${BLUE}==>${NC} $*"; }
 
-# REPO_ROOT — discovered from the script that sourced us. Caller should set
+# REPO_ROOT: discovered from the script that sourced us. Caller should set
 # SCRIPT_DIR before sourcing if they want to override.
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)}"
 REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
@@ -29,11 +29,11 @@ BASELINE_DIR="${BASELINE_DIR:-$HOME/.openclaw/workspace/baseline}"
 WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
 
 # load_config: source config/machine.env (non-secret), then optionally
-# config/machine.env.secrets (bot tokens — gitignored, may not exist).
+# config/machine.env.secrets (bot tokens; gitignored, may not exist).
 # Errors out if the non-secret file is missing.
 load_config() {
     if [ ! -f "$CONFIG_FILE" ]; then
-        die "Missing $CONFIG_FILE — run: cp config/machine.env.example config/machine.env && \$EDITOR config/machine.env"
+        die "Missing $CONFIG_FILE. Run: cp config/machine.env.example config/machine.env && \$EDITOR config/machine.env"
     fi
     # shellcheck disable=SC1090
     source "$CONFIG_FILE"
@@ -73,7 +73,7 @@ load_config() {
     : "${CRON_MONTHLY_COMPRESS:=30 5 1 * *}"
     : "${CRON_HERMES_DAILY_STUDY_UTC:=0 10 * * *}"
 
-    # Telegram bots — empty by default, scripts skip phases without tokens
+    # Telegram bots: empty by default, scripts skip phases without tokens
     : "${TG_BOT_MAIN_TOKEN:=}"
     : "${TG_BOT_MAIN_NAME:=}"
     : "${TG_BOT_HERMES_MAINTAINER_TOKEN:=}"
@@ -117,7 +117,7 @@ load_config() {
 # emit_journal_event: append a JSONL event to the evolution journal.
 # Usage: emit_journal_event <event-name> <details-string> [actor]
 #
-# Default actor is "installer" — these events come from this template's
+# Default actor is "installer": these events come from this template's
 # install scripts, not from the running OpenClaw main agent. Mis-attributing
 # them to "main" makes the journal harder to triage during a rescue.
 # scripts/edit-baseline.sh passes actor="operator" explicitly.

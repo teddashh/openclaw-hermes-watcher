@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 03-install-hermes.sh — install Hermes Agent via upstream installer.
+# 03-install-hermes.sh: install Hermes Agent via upstream installer.
 #
 # Critical: --skip-setup (we configure manually in step 4) and we DO NOT run
-# `hermes claw migrate` — that would absorb OpenClaw's SOUL/memory/skills/keys,
+# `hermes claw migrate`, which would absorb OpenClaw's SOUL/memory/skills/keys,
 # which is the opposite of what we want.
 #
 # Idempotent. If hermes is already installed, this just verifies and exits.
@@ -33,7 +33,7 @@ emit_journal_event deploy_hermes_install_started ""
 info "Downloading upstream Hermes installer at ref '${HERMES_INSTALL_REF}'..."
 info "This will take 10-20 minutes (uv installs Python 3.11, builds extensions, installs deps)."
 if [ "$HERMES_INSTALL_REF" = "main" ]; then
-    warn "HERMES_INSTALL_REF=main — you are tracking the moving upstream branch."
+    warn "HERMES_INSTALL_REF=main: you are tracking the moving upstream branch."
     warn "  For reproducible installs across hosts, pin to a specific tag in machine.env."
 fi
 echo
@@ -67,17 +67,17 @@ fi
 
 # Confirm we did NOT auto-migrate
 if [ -d "$HOME/.hermes/skills/openclaw-imports" ]; then
-    warn "openclaw-imports/ exists — auto-migration may have run!"
+    warn "openclaw-imports/ exists; auto-migration may have run!"
     warn "Inspect ~/.hermes/skills/ and decide whether to keep or remove."
     emit_journal_event deploy_hermes_unexpected_migration_detected "openclaw-imports present"
 else
-    ok "No openclaw-imports detected — clean install (good)"
+    ok "No openclaw-imports detected, clean install (good)"
 fi
 
 if [ -f "$HOME/.hermes/SOUL.md" ]; then
     soul_size=$(wc -c < "$HOME/.hermes/SOUL.md")
     if [ "$soul_size" -gt 600 ]; then
-        warn "~/.hermes/SOUL.md has content ($soul_size bytes) — possible auto-migration?"
+        warn "~/.hermes/SOUL.md has content ($soul_size bytes); possible auto-migration?"
     fi
 fi
 

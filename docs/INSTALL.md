@@ -36,7 +36,7 @@ cp config/machine.env.example config/machine.env
 $EDITOR config/machine.env
 
 # Bot tokens (the actual credentials).
-# GITIGNORED — never commit, not even to a private fork. Lives only on the
+# GITIGNORED: never commit, not even to a private fork. Lives only on the
 # machine where it's installed.
 cp config/machine.env.secrets.example config/machine.env.secrets
 $EDITOR config/machine.env.secrets
@@ -44,21 +44,21 @@ $EDITOR config/machine.env.secrets
 
 `machine.env` required fields:
 
-- `OPERATOR_NAME`, `OPERATOR_HANDLE`, `OPERATOR_EMAIL` — how agents address you
-- `MACHINE_NAME`, `MACHINE_ROLE` — what this host is for
-- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD` — Markdown bullet lists for `machine-mission.md`
+- `OPERATOR_NAME`, `OPERATOR_HANDLE`, `OPERATOR_EMAIL`: how agents address you
+- `MACHINE_NAME`, `MACHINE_ROLE`: what this host is for
+- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD`: Markdown bullet lists for `machine-mission.md`
 
 `machine.env` optional but recommended:
 
-- `OPERATOR_TELEGRAM_USER_ID` (get yours from `@userinfobot`) — needed for any Telegram phases
-- `TG_BOT_*_NAME` — bot usernames (the @handle), one per agent
+- `OPERATOR_TELEGRAM_USER_ID` (get yours from `@userinfobot`): needed for any Telegram phases
+- `TG_BOT_*_NAME`: bot usernames (the @handle), one per agent
 
 `machine.env.secrets` (optional per phase):
 
-- `TG_BOT_MAIN_TOKEN` — leave empty to skip the main-agent Telegram bot
-- `TG_BOT_HERMES_MAINTAINER_TOKEN` — Phase 1.5
-- `TG_BOT_HERMES_AGENT_TOKEN` — Phase 2
-- `TG_BOT_PROJECT_SUBAGENT_TOKENS` — comma-sep, same order as `TG_BOT_PROJECT_SUBAGENT_NAMES` in `machine.env`
+- `TG_BOT_MAIN_TOKEN`: leave empty to skip the main-agent Telegram bot
+- `TG_BOT_HERMES_MAINTAINER_TOKEN`: Phase 1.5
+- `TG_BOT_HERMES_AGENT_TOKEN`: Phase 2
+- `TG_BOT_PROJECT_SUBAGENT_TOKENS`: comma-sep, same order as `TG_BOT_PROJECT_SUBAGENT_NAMES` in `machine.env`
 
 Leave token fields empty for phases you don't want. The install scripts gate on token presence and skip cleanly.
 
@@ -77,7 +77,7 @@ Leave token fields empty for phases you don't want. The install scripts gate on 
 bash scripts/all.sh
 ```
 
-This runs steps 00–11 in order. Each step is idempotent — safe to re-run after editing `machine.env` or fixing an error. The Hermes installer (step 03) takes 10–20 minutes the first time (Python 3.11 install + extension build).
+This runs steps 00 to 11 in order. Each step is idempotent, so it is safe to re-run after editing `machine.env` or fixing an error. The Hermes installer (step 03) takes 10 to 20 minutes the first time (Python 3.11 install + extension build).
 
 ## 5. Verify
 
@@ -87,16 +87,16 @@ bash scripts/07-smoke-test.sh
 
 If anything fails, the script prints what's missing. Common issues:
 
-- `openclaw status not OK` — run `openclaw doctor`
-- `hermes doctor reports issues` — usually missing API keys; see [Phase 2 setup](PHASE-2-TELEGRAM.md)
-- `gh CLI authenticated` failing — run `gh auth login` interactively
+- `openclaw status not OK`: run `openclaw doctor`
+- `hermes doctor reports issues`: usually missing API keys; see [Phase 2 setup](PHASE-2-TELEGRAM.md)
+- `gh CLI authenticated` failing: run `gh auth login` interactively
 
 ## 6. Pair Telegram bots (Phase 1.5+)
 
 After the install, if you set Telegram bot tokens, you need to authorize your Telegram user ID with each bot:
 
 1. Open Telegram, message your bot (e.g., `@your_watchbot`)
-2. Send any text — OpenClaw replies with a pairing code
+2. Send any text; OpenClaw replies with a pairing code
 3. Send the pairing code back to grant scopes
 
 For Hermes (Phase 2): same flow, but message `@your_hermesbot`. Hermes will reply directly.

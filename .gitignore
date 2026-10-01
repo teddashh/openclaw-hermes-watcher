@@ -1,10 +1,10 @@
 # Per-machine config. Two files:
-#   config/machine.env         — non-secret values (operator identity, machine
+#   config/machine.env:          non-secret values (operator identity, machine
 #                                 name, bot usernames, schedule, version pins).
 #                                 Intended to be COMMITTED to your private fork.
 #                                 Upstream gitignores it so the public template
 #                                 stays generic.
-#   config/machine.env.secrets — bot tokens. Gitignored EVERYWHERE, never
+#   config/machine.env.secrets:  bot tokens. Gitignored EVERYWHERE, never
 #                                 committed (not even to a private fork). Lives
 #                                 on the machine it belongs to.
 config/machine.env
@@ -16,7 +16,7 @@ config/heartbeat-patrol.env
 # See tests/.pii-patterns.local.example for format.
 tests/.pii-patterns.local
 
-# Rendered output (not source of truth — regenerated each install).
+# Rendered output (not source of truth; regenerated each install).
 *.rendered
 .render-cache/
 

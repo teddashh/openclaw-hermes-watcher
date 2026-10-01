@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# edit-baseline.sh — safely edit a chattr +i baseline file via $EDITOR.
+# edit-baseline.sh: safely edit a chattr +i baseline file via $EDITOR.
 #
 # Usage: scripts/edit-baseline.sh <relative-baseline-filename>
 #   e.g.: scripts/edit-baseline.sh machine-mission.md

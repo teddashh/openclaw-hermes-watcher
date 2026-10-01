@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 00-prereqs.sh — sanity-check the host before install.
+# 00-prereqs.sh: sanity-check the host before install.
 #
 # Ensures OpenClaw is already installed (we don't install it), gh is auth'd,
 # bash 4+, jq, curl, systemd --user enabled. Fails fast with actionable error
@@ -31,7 +31,7 @@ check_with_msg() {
     if "$@" >/dev/null 2>&1; then
         ok "$name"
     else
-        warn "$name — $fail_msg"
+        warn "$name: $fail_msg"
         errors=$((errors + 1))
     fi
 }
@@ -55,7 +55,7 @@ if command -v openclaw >/dev/null 2>&1; then
     if openclaw status >/dev/null 2>&1; then
         ok "openclaw status reports happy"
     else
-        warn "openclaw status not happy — run 'openclaw doctor' before proceeding"
+        warn "openclaw status not happy; run 'openclaw doctor' before proceeding"
         errors=$((errors + 1))
     fi
 fi
@@ -64,7 +64,7 @@ fi
 if command -v hermes >/dev/null 2>&1; then
     info "hermes already installed: $(hermes --version 2>/dev/null | head -1)"
 else
-    info "hermes not yet installed — 03-install-hermes.sh will install it"
+    info "hermes not yet installed; 03-install-hermes.sh will install it"
 fi
 
 # gh CLI authenticated
@@ -74,14 +74,14 @@ check_with_msg "gh CLI authenticated" \
 
 # Workspace exists
 check_with_msg "OpenClaw workspace exists at $WORKSPACE_DIR" \
-    "OpenClaw main agent workspace not bootstrapped — run 'openclaw init' or equivalent" \
+    "OpenClaw main agent workspace not bootstrapped (run 'openclaw init' or equivalent)" \
     test -d "$WORKSPACE_DIR"
 
 # Linger enabled (so user systemd survives logout)
 if loginctl show-user "$USER" 2>/dev/null | grep -q 'Linger=yes'; then
     ok "user linger enabled (systemd --user persists across logout)"
 else
-    warn "user linger NOT enabled — run: sudo loginctl enable-linger \$USER"
+    warn "user linger NOT enabled; run: sudo loginctl enable-linger \$USER"
     info "  (without linger, the watcher and gateway stop when you log out)"
 fi
 
@@ -89,7 +89,7 @@ fi
 if [ -f "$CONFIG_FILE" ]; then
     ok "machine.env present at $CONFIG_FILE"
 else
-    warn "machine.env missing — copy config/machine.env.example to config/machine.env and edit"
+    warn "machine.env missing; copy config/machine.env.example to config/machine.env and edit"
     errors=$((errors + 1))
 fi
 

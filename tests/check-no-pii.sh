@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# check-no-pii.sh — fail the build if any PII pattern leaked into tracked files.
+# check-no-pii.sh: fail the build if any PII pattern leaked into tracked files.
 #
 # Two pattern sources, both optional:
 #
 # 1. GENERIC_REGEXES (defined below): structural patterns that look like real
-#    PII regardless of who you are — real-looking emails, IPv4 literals (with
+#    PII regardless of who you are: real-looking emails, IPv4 literals (with
 #    a small allowlist for loopback / RFC1918), Telegram bot-token shape.
 #    These ship with the template so upstream PRs don't accidentally land
 #    things like "contact me at me@gmail.com" or a forgotten test IP.
 #
-# 2. tests/.pii-patterns.local (gitignored): your own literal strings — your
+# 2. tests/.pii-patterns.local (gitignored): your own literal strings, like your
 #    name, your email, your bot username, your machine name. The committed
 #    repo NEVER contains these. The file is sourced if it exists; otherwise
 #    only the generic regexes run.
@@ -17,7 +17,7 @@
 # Why both: generic regex catches shape but misses things like "Theodore" (a
 # common name); literal patterns catch your own identifiers but operator-
 # specific patterns must not be committed (that would leak the very PII the
-# test guards against — exactly the bug an earlier draft of this script had).
+# test guards against, exactly the bug an earlier draft of this script had).
 
 set -uo pipefail
 
@@ -25,7 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOCAL_PATTERNS_FILE="$SCRIPT_DIR/.pii-patterns.local"
 
-# Generic structural patterns — should never legitimately appear in a public
+# Generic structural patterns that should never legitimately appear in a public
 # template's tracked files. Add to this list when a new shape is identified
 # (any pattern that doesn't depend on who the operator is).
 GENERIC_REGEXES=(
@@ -44,7 +44,7 @@ GENERIC_REGEXES=(
 
 # Two allowlists with different match semantics:
 #
-# IP_PREFIX_ALLOWLIST — IPv4-shaped matches must START with one of these.
+# IP_PREFIX_ALLOWLIST: IPv4-shaped matches must START with one of these.
 # Substring containment is wrong here: "10." is a legitimate prefix for
 # RFC1918 but a substring like "8.10.20.30" CONTAINS "10." while being a
 # public IP that should leak as a finding.
@@ -77,7 +77,7 @@ IP_PREFIX_ALLOWLIST=(
     '255.255.'      # broadcast / mask
 )
 
-# SUBSTRING_ALLOWLIST — non-IP matches (emails, bot tokens) are allowlisted
+# SUBSTRING_ALLOWLIST: non-IP matches (emails, bot tokens) are allowlisted
 # if they CONTAIN one of these substrings. Conservative; we'd rather have
 # false positives than false negatives.
 SUBSTRING_ALLOWLIST=(
@@ -100,8 +100,8 @@ LOCAL_PATTERNS=()
 if [ -f "$LOCAL_PATTERNS_FILE" ]; then
     # `|| [ -n "$line" ]` salvages a final line that has no trailing newline
     # (e.g., the operator added a pattern at the end of the file and saved
-    # without a closing \n). Without this, that last — typically the most
-    # recently added — pattern is silently dropped.
+    # without a closing \n). Without this, that last (typically the most
+    # recently added) pattern is silently dropped.
     while IFS= read -r line || [ -n "$line" ]; do
         [[ "$line" =~ ^[[:space:]]*# ]] && continue
         [[ -z "${line// }" ]] && continue
@@ -186,7 +186,7 @@ for pattern in "${LOCAL_PATTERNS[@]}"; do
 done
 
 if [ "${#LOCAL_PATTERNS[@]}" -eq 0 ]; then
-    echo "[..] no $LOCAL_PATTERNS_FILE — only generic structural patterns checked."
+    echo "[..] no $LOCAL_PATTERNS_FILE; only generic structural patterns checked."
     echo "     If you have operator-specific identifiers (real names, your bot tokens),"
     echo "     copy tests/.pii-patterns.local.example and add them there."
 fi

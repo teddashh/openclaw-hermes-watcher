@@ -1,6 +1,6 @@
 # Example machine.env files
 
-Reference configurations to copy and adapt. None of these contain real bot tokens — those go in `config/machine.env.secrets` (gitignored, per-machine).
+Reference configurations to copy and adapt. None of these contain real bot tokens; those go in `config/machine.env.secrets` (gitignored, per-machine).
 
 | File | Use case |
 |---|---|
@@ -26,4 +26,4 @@ Both files have inline comments explaining each field. Walk through them top to 
 
 ## What if my situation is between these two?
 
-That's fine. Pick whichever is closer and trim / extend. The fields not used (e.g., empty `TG_BOT_*_NAME`) cause the corresponding install phase to be skipped — see `scripts/10-tg-maintainer.sh` and `scripts/11-tg-hermes.sh` for the gating.
+That's fine. Pick whichever is closer and trim / extend. Fields you don't use can stay empty: an empty `TG_BOT_HERMES_MAINTAINER_TOKEN` or `TG_BOT_HERMES_AGENT_TOKEN` in `config/machine.env.secrets` skips Phase 1.5 or Phase 2 (see `scripts/10-tg-maintainer.sh` and `scripts/11-tg-hermes.sh` for the gating).

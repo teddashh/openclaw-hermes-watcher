@@ -1,13 +1,13 @@
-# baseline.policy.yaml — ${MACHINE_NAME}
+# baseline.policy.yaml: ${MACHINE_NAME}
 #
 # This file enforces the hard floor on what agents may do.
 # Modifying it requires `sudo chattr -i` on the host (see scripts/edit-baseline.sh).
 #
 # Companion files in ~/.openclaw/workspace/baseline/:
-#   - machine-mission.md       — what this machine is for
-#   - hermes-permissions.yaml  — Hermes's allowed/denied scope
-#   - watcher.sh               — periodic sentinel
-#   - .expected-hashes         — sha256 fingerprints of all the above
+#   - machine-mission.md:       what this machine is for
+#   - hermes-permissions.yaml:  Hermes's allowed/denied scope
+#   - watcher.sh:               periodic sentinel
+#   - .expected-hashes:         sha256 fingerprints of all the above
 #
 # Source of truth: openclaw-hermes-watcher template repo. Render this file
 # from templates/baseline.policy.yaml.tmpl via scripts/01-render-baseline.sh.
@@ -18,12 +18,12 @@ last_reviewed_by: ${OPERATOR_HANDLE}
 last_reviewed_at: TBD
 
 # ---------------------------------------------------------------------------
-# IMMUTABLE PATHS — files no agent may write to.
+# IMMUTABLE PATHS: files no agent may write to.
 # Enforcement: filesystem (chattr +i where applicable) + main agent pre-apply
 # check + watcher periodic verification.
 # ---------------------------------------------------------------------------
 immutable_paths:
-  # System & OS config — NOT bulk /etc/. Main agent owns specific files
+  # System & OS config, but NOT bulk /etc/. Main agent owns specific files
   # (allow_write_for_main below); the rest of /etc/ is sacred.
   - /etc/passwd
   - /etc/shadow
@@ -37,7 +37,7 @@ immutable_paths:
   - /etc/cron.*/                                         # system cron (we use OpenClaw cron)
   - /etc/iptables/
 
-  # System logs — read-only for analysis, no agent should write
+  # System logs: read-only for analysis, no agent should write
   - /var/log/
 
   # Installed agent code (managed by package manager / hermes update)
@@ -56,7 +56,7 @@ immutable_paths:
 # infrastructure dirs. Hermes still cannot write any of these (Hermes write
 # scope is bounded to ~/.hermes/ and the upgrade-pack inbox).
 #
-# Add per-service paths here if your project subagents (doom, web-app, etc.)
+# Add per-service paths here if your project subagents (web-app, worker, etc.)
 # need to manage their own systemd units, configs, etc.
 allow_write_for_main:
   - /etc/caddy/Caddyfile                                 # if you use Caddy
@@ -66,7 +66,7 @@ allow_write_for_main:
   - /etc/tinyproxy/tinyproxy.conf                        # outbound proxy
 
 # ---------------------------------------------------------------------------
-# FORBIDDEN ACTIONS — things no agent may ever do, even with budget.
+# FORBIDDEN ACTIONS: things no agent may ever do, even with budget.
 # ---------------------------------------------------------------------------
 
 forbidden_actions:
@@ -86,7 +86,7 @@ forbidden_actions:
 
   # Credentials
   - id: modify_credentials
-    description: API keys, OAuth tokens, .env files — read-only to all agents
+    description: API keys, OAuth tokens, .env files (read-only to all agents)
     enforced_by: [filesystem]
     todo_implement: log_token_pattern_grep
 
@@ -130,7 +130,7 @@ forbidden_actions:
     todo_implement: openclaw_agents_list_drift_check
 
 # ---------------------------------------------------------------------------
-# REQUIRE_APPROVAL — things that need ${OPERATOR_HANDLE} to say yes, but are not forever-forbidden.
+# REQUIRE_APPROVAL: things that need ${OPERATOR_HANDLE} to say yes, but are not forever-forbidden.
 # Main agent queues these with status=pending_approval; pings via journal+telemetry.
 # ---------------------------------------------------------------------------
 require_approval:
@@ -151,13 +151,13 @@ require_approval:
     threshold: 10
 
   - id: modify_within_immutable_paths
-    description: When ${OPERATOR_HANDLE} explicitly wants to change something on the immutable_paths list (procedure: scripts/edit-baseline.sh)
+    description: When ${OPERATOR_HANDLE} explicitly wants to change something on the immutable_paths list (procedure in scripts/edit-baseline.sh)
 
   - id: change_telemetry_endpoint
     description: Changing where dashboard telemetry goes. ${OPERATOR_HANDLE} only.
 
 # ---------------------------------------------------------------------------
-# PACK_KINDS — taxonomy of evolution-pack types Hermes may produce.
+# PACK_KINDS: taxonomy of evolution-pack types Hermes may produce.
 # Each pack manifest in upgrade-packs/inbox/<topic>/manifest.yaml MUST declare
 # its pack_kind. Main agent reads this section to decide auto-apply eligibility,
 # verification depth, and rollback rigor before applying any pack.
@@ -169,7 +169,7 @@ require_approval:
 # ---------------------------------------------------------------------------
 pack_kinds:
   - id: install_skill
-    description: Drops a skill into ~/.openclaw/skills/. OpenClaw's documented extension point — structurally cannot modify OpenClaw itself.
+    description: Drops a skill into ~/.openclaw/skills/. OpenClaw's documented extension point, so it structurally cannot modify OpenClaw itself.
     structural_risk: low
     default_tier: low_risk
     rollback_pattern: rm -rf ~/.openclaw/skills/<skill_name>
@@ -208,7 +208,7 @@ pack_kinds:
 # When risk_tier is more restrictive than default_tier, restrictive wins.
 
 # ---------------------------------------------------------------------------
-# VERSION PINS — what hermes-maintainer should treat as known-good.
+# VERSION PINS: what hermes-maintainer should treat as known-good.
 # ---------------------------------------------------------------------------
 known_good:
   openclaw_version: "${KNOWN_GOOD_OPENCLAW_VERSION}"
@@ -217,7 +217,7 @@ known_good:
   python_version: "${KNOWN_GOOD_PYTHON_VERSION}"
 
 # ---------------------------------------------------------------------------
-# Managed paths — paths that ARE expected to change, just only via documented flows.
+# Managed paths: paths that ARE expected to change, just only via documented flows.
 # ---------------------------------------------------------------------------
 managed_paths:
   - path: ~/.hermes/hermes-agent/

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 01-render.sh — render templates/* using config/machine.env values.
+# 01-render.sh: render templates/* using config/machine.env values.
 #
 # Output goes to a working dir under .render-cache/ in the repo, NOT directly
 # to ~/.openclaw/workspace/baseline/. The next script (02-deploy-baseline.sh)
@@ -34,10 +34,10 @@ render_one "$REPO_ROOT/templates/machine-mission.md.tmpl"        machine-mission
 render_one "$REPO_ROOT/templates/baseline.policy.yaml.tmpl"      baseline.policy.yaml
 render_one "$REPO_ROOT/templates/hermes-permissions.yaml.tmpl"   hermes-permissions.yaml
 
-# Generic — copy as-is (no substitution needed)
+# Generic: copy as-is (no substitution needed)
 cp "$REPO_ROOT/lib/watcher.sh" "$OUT_DIR/watcher.sh"
 
-# Systemd unit — uses __HOME__ placeholder; render here
+# Systemd unit: uses __HOME__ and __MACHINE_NAME__ placeholders, rendered here with sed
 sed "s|__HOME__|$HOME|g; s|__MACHINE_NAME__|$MACHINE_NAME|g" \
     "$REPO_ROOT/templates/openclaw-watcher.service.tmpl" \
     > "$OUT_DIR/openclaw-watcher.service"

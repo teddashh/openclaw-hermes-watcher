@@ -1,7 +1,7 @@
-# hermes-permissions.yaml — ${MACHINE_NAME}
+# hermes-permissions.yaml: ${MACHINE_NAME}
 #
 # Hermes's allowed and forbidden scope, plus the change budget.
-# This is policy, not the hard floor — for the hard floor see baseline.policy.yaml.
+# This is policy, not the hard floor; for the hard floor see baseline.policy.yaml.
 # This file IS chattr +i alongside baseline, but is meant to be edited more often
 # than baseline.policy.yaml (e.g., when adjusting change budget after observing usage).
 #
@@ -24,7 +24,7 @@ last_reviewed_at: TBD
 # ---------------------------------------------------------------------------
 hermes_may:
   read:
-    # Hermes's window into OpenClaw — read-only
+    # Hermes's window into OpenClaw (read-only)
     - ~/.openclaw/                                       # the entire OpenClaw state, RO
     - /usr/lib/node_modules/openclaw/                    # installed code, RO
     - ~/.openclaw/workspace/MACHINE_LOG.md
@@ -42,7 +42,7 @@ hermes_may:
     # "primary food" pipeline for Hermes per SOUL.md service-chain framing.
 ${HERMES_READ_EXTRA_PATHS_MD}
 
-    # Upstream watching — fetched via gh CLI which has its own auth
+    # Upstream watching: fetched via gh CLI, which has its own auth
     - github.com/openclaw/openclaw                       # via gh, releases/issues/diffs
     - github.com/NousResearch/hermes-agent               # for self-awareness during major bumps
 
@@ -67,12 +67,12 @@ ${HERMES_READ_EXTRA_PATHS_MD}
 hermes_may_not:
   write:
     - ~/.openclaw/                                       # never write to OpenClaw state directly
-    - /etc/                                              # OS config — main may, Hermes never
+    - /etc/                                              # OS config: main may, Hermes never
     - /usr/                                              # installed code
     - ~/.openclaw/workspace/baseline/                    # baseline is operator-only
     - ~/.openclaw/workspace/evolution-journal.jsonl      # only main may write
     - ~/.openclaw/openclaw.json                          # only via openclaw config set, by main
-    - ~/.hermes/.env                                     # API keys — operator only
+    - ~/.hermes/.env                                     # API keys, operator only
     - ~/.ssh/
 
   invoke:
@@ -84,7 +84,7 @@ hermes_may_not:
     - openclaw_*                                         # cannot drive OpenClaw directly; talks via journal/inbox
     - any_command_outside_hermes_workspace               # Hermes's shell tool is scoped to ~/.hermes/
     # Phase 2 (Hermes own gateway): if you enabled it, autonomous Telegram push remains
-    # forbidden by SOUL.md — the gateway is for replies to operator messages, not for
+    # forbidden by SOUL.md: the gateway is for replies to operator messages, not for
     # Hermes to ping autonomously. Cross-patrol cron alerts use a separate mechanism
     # (heartbeat-patrol script + the maintainer's bot), not Hermes's gateway.
 
@@ -99,7 +99,7 @@ hermes_may_not:
     - watcher_unit_or_script                             # see forbidden_actions
 
 # ---------------------------------------------------------------------------
-# CHANGE BUDGET — how many proposals Hermes can stack up per week, by tier.
+# CHANGE BUDGET: how many proposals Hermes can stack up per week, by tier.
 # Main agent counts applied packs and rejects new ones above the limit.
 # ---------------------------------------------------------------------------
 change_budget:
