@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
-# 11-tg-hermes.sh — Phase 2: enable Hermes Agent's own Telegram gateway.
+# 11-tg-hermes.sh (Phase 2): enable Hermes Agent's own Telegram gateway.
 #
-# Reads TG_BOT_HERMES_AGENT_TOKEN from machine.env. If empty, skips entirely.
+# Reads TG_BOT_HERMES_AGENT_TOKEN from config/machine.env.secrets (the bot's
+# username, TG_BOT_HERMES_AGENT_NAME, comes from config/machine.env). If the
+# token is empty, skips entirely.
 #
-# Phase 2 is opt-in. Hermes by SOUL contract does NOT push autonomously — the
-# gateway is purely for two-way chat (you ask, Hermes answers). Cross-patrol
-# alerts use a different bot (configured in 10-tg-maintainer.sh) so they remain
-# triggered-by-stale-peer-detection rather than autonomous.
+# Phase 2 is opt-in. Hermes by SOUL contract does NOT push autonomously: the
+# gateway is for two-way chat (you ask, Hermes answers). The one exception is
+# the daily-study patrol (STEP 2 of the daily-study prompt), which alerts
+# through this gateway when a maintainer job's heartbeat is stale. The four
+# maintainer jobs alert through heartbeat-patrol instead, using the bot token
+# in ~/.config/heartbeat-patrol.env (written by 06-cron-setup.sh; by default
+# the maintainer's bot token).
 
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
@@ -16,10 +21,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 load_config
 
-section "Phase 2 — Hermes Agent's own Telegram gateway"
+section "Phase 2: Hermes Agent's own Telegram gateway"
 
 if [ -z "${TG_BOT_HERMES_AGENT_TOKEN:-}" ]; then
-    info "TG_BOT_HERMES_AGENT_TOKEN empty — skipping Phase 2"
+    info "TG_BOT_HERMES_AGENT_TOKEN empty in machine.env.secrets, skipping Phase 2"
     info "  To enable later: paste a token from @BotFather and re-run this script."
     exit 0
 fi
@@ -48,12 +53,12 @@ fi
 # Install profile-scoped systemd unit for the gateway
 info "Installing hermes-gateway-${PROFILE}.service via 'hermes gateway install'..."
 hermes -p "$PROFILE" gateway install --force >/dev/null 2>&1 \
-    || die "hermes gateway install failed — check 'hermes gateway --help'"
+    || die "hermes gateway install failed (check 'hermes gateway --help')"
 
 systemctl --user daemon-reload
 systemctl --user enable "hermes-gateway-${PROFILE}.service" >/dev/null 2>&1 || true
 # `restart` not `start`: the documented re-run path for token rotation
-# (edit machine.env, re-run scripts/11) requires the daemon to pick up the
+# (edit machine.env.secrets, re-run scripts/11) requires the daemon to pick up the
 # new token. `start` is a no-op when already active and the daemon would
 # silently keep the old token in memory.
 systemctl --user restart "hermes-gateway-${PROFILE}.service" >/dev/null 2>&1 || true
@@ -79,5 +84,6 @@ question; Hermes should reply.
 Per Hermes's SOUL contract:
   - Hermes does NOT push autonomously.
   - Telegram is for two-way chat: you ask, Hermes answers.
-  - Cross-patrol alerts (cron failures) use the maintainer's bot, not this one.
+  - One exception: the daily-study patrol alerts here if a maintainer job
+    misses its window. The maintainer jobs' own alerts use the maintainer's bot.
 EOF
