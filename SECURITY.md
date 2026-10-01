@@ -33,8 +33,8 @@ You should expect:
 
 ## What's out of scope
 
-- Vulnerabilities in OpenClaw itself — report those to [openclaw/openclaw](https://github.com/openclaw/openclaw)
-- Vulnerabilities in Hermes Agent itself — report those to [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
+- Vulnerabilities in OpenClaw itself: report those to [openclaw/openclaw](https://github.com/openclaw/openclaw)
+- Vulnerabilities in Hermes Agent itself: report those to [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
 - Issues that require root on the host (root already bypasses the baseline; this template's threat model is "agent is unprivileged user")
 - Theoretical attacks against `chattr +i` (it's a kernel filesystem flag; that's the threat model boundary)
 
@@ -42,7 +42,7 @@ You should expect:
 
 If you accidentally committed a bot token to a public repo (private repos are also at risk via mirroring/forks), the immediate action is:
 
-1. Tell @BotFather `/revoke` for that bot — invalidates the token
+1. Tell @BotFather `/revoke` for that bot (this invalidates the token)
 2. Generate a new token via `/token`
 3. Update your `config/machine.env.secrets` with the new value
 4. Re-run `bash scripts/06-cron-setup.sh` (regenerates `~/.config/heartbeat-patrol.env`) and `bash scripts/10-tg-maintainer.sh` / `bash scripts/11-tg-hermes.sh` (for the corresponding bot)

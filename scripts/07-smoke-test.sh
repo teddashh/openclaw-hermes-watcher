@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 07-smoke-test.sh — verify install end-to-end.
+# 07-smoke-test.sh: verify install end-to-end.
 # Counts passed/warned/failed; exits non-zero on any FAIL.
 
 set -uo pipefail
@@ -114,13 +114,13 @@ fi
 if openclaw status >/dev/null 2>&1; then
     pass "openclaw status OK"
 else
-    warn_count "openclaw status not OK — run 'openclaw doctor'"
+    warn_count "openclaw status not OK; run 'openclaw doctor'"
 fi
 
 if hermes doctor 2>/dev/null | grep -q -i "ok\|good\|healthy"; then
     pass "hermes doctor OK"
 else
-    warn_count "hermes doctor reports issues — run 'hermes doctor' to inspect"
+    warn_count "hermes doctor reports issues; run 'hermes doctor' to inspect"
 fi
 
 echo

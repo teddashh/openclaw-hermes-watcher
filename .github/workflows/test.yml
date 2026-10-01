@@ -53,7 +53,11 @@ jobs:
           # by setting versions explicitly.
           mkdir -p .render-cache
           source scripts/lib/render-template.sh
+          # envsubst only sees exported variables, so export everything the
+          # config defines (load_config does the same on a real install).
+          set -a
           source config/machine.env
+          set +a
           export HERMES_INSTALL_REF="${HERMES_INSTALL_REF:-main}"
           export KNOWN_GOOD_OPENCLAW_VERSION="${KNOWN_GOOD_OPENCLAW_VERSION:-vX.Y.Z}"
           export KNOWN_GOOD_HERMES_VERSION="${KNOWN_GOOD_HERMES_VERSION:-vX.Y.Z}"
@@ -72,3 +76,29 @@ jobs:
             exit 1
           fi
           echo "All placeholders substituted."
+          echo
+          echo "Confirm the config values reached the rendered files:"
+          # If the values were not exported, envsubst would replace every
+          # placeholder with an empty string and the check above would still
+          # pass. So for each placeholder a template uses, look for the
+          # variable's value (its first line, for multi-line values) in the
+          # rendered file. Variables that are empty in the example are skipped.
+          checked=0
+          missing=0
+          for tmpl in templates/*.tmpl; do
+            out=".render-cache/$(basename "$tmpl" .tmpl)"
+            for var in $(grep -o '\${[A-Z_]\+}' "$tmpl" | tr -d '${}' | sort -u || true); do
+              value="${!var:-}"
+              [ -n "$value" ] || continue
+              checked=$((checked + 1))
+              if ! grep -qF -- "${value%%$'\n'*}" "$out"; then
+                echo "FAIL: $out does not contain the value of $var"
+                missing=$((missing + 1))
+              fi
+            done
+          done
+          if [ "$checked" -eq 0 ] || [ "$missing" -gt 0 ]; then
+            echo "FAIL: $missing of $checked config values missing from the rendered files"
+            exit 1
+          fi
+          echo "All $checked config values found in the rendered files."

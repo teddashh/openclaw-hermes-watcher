@@ -1,30 +1,39 @@
 #!/usr/bin/env bash
-# heartbeat-patrol — bidirectional cron heartbeat + dead-man-switch alerter.
+# heartbeat-patrol: bidirectional cron heartbeat + dead-man-switch alerter.
 #
-# Each scheduled cron job (Hermes-side or maintainer-side) calls this once
-# at the end of its run. The script:
-#   1. Writes its own heartbeat to a known location (under the agent's writable
-#      area — Hermes -> ~/.hermes/heartbeats/, maintainer -> ~/.openclaw/workspace/heartbeats/).
-#   2. Reads ALL OTHER agents' heartbeats and computes staleness (now - last) vs
-#      the registered interval+grace.
+# The four maintainer-side cron jobs call this once, as the FIRST step of each
+# run: scripts/06-cron-setup.sh puts `heartbeat-patrol --self <job>` at the top
+# of every job prompt, so the heartbeat lands even if the task itself fails.
+# The Hermes-side daily study does not call it. Hermes's shell is chroot-jailed,
+# so its prompt has it write its own heartbeat with a file tool and patrol the
+# four maintainer heartbeats itself. This script still checks the Hermes
+# heartbeat as a peer.
+#
+# The script:
+#   1. Writes the calling job's heartbeat into that job's JOB_DIR (maintainer
+#      jobs -> ~/.openclaw/workspace/heartbeats/, hermes_daily_study ->
+#      ~/.hermes/heartbeats/).
+#   2. Reads every OTHER job's heartbeat and computes staleness (now - last)
+#      against that job's registered interval+grace.
 #   3. If any peer is stale, appends to ~/.openclaw/workspace/heartbeats/_alerts.log
-#      and (if a TELEGRAM_BOT_TOKEN is configured) sends a Telegram message.
+#      and, if both TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set, sends a
+#      Telegram message (through TELEGRAM_PROXY when that is set).
 #
 # Inverse-heartbeat dead-man-switch: a fresh write IS the "I'm alive" signal;
-# staleness IS the alert condition. Missed runs surface automatically because
-# no peer wrote a fresh heartbeat to dismiss the alarm.
+# staleness IS the alert condition. A job that misses its run leaves a stale
+# heartbeat, and the next peer that runs reports it.
 #
 # Source of truth: openclaw-hermes-watcher/lib/heartbeat-patrol.sh
-# Installed at:    /home/<user>/.local/bin/heartbeat-patrol  (chmod 755)
-# Alert config at: /home/<user>/.config/heartbeat-patrol.env (chmod 600)
+# Installed at:    ~/.local/bin/heartbeat-patrol  (chmod 755, by scripts/06)
+# Alert config at: ~/.config/heartbeat-patrol.env (chmod 600, by scripts/06)
 #                  Format:
 #                    TELEGRAM_BOT_TOKEN=<bot_token>
 #                    TELEGRAM_CHAT_ID=<chat_id>
 #                    TELEGRAM_PROXY=http://127.0.0.1:8118  # optional
 #
 # Usage: heartbeat-patrol --self <job-name>
-# Known jobs registered in JOB_INTERVAL/JOB_GRACE/JOB_DIR below — update when
-# adding/removing scheduled cron jobs on this host.
+# Known jobs are registered in JOB_INTERVAL/JOB_GRACE/JOB_DIR below; update
+# them when adding/removing scheduled cron jobs on this host.
 
 # `set -e` so a failed heartbeat write (chattr +i, ENOSPC, RO remount, NFS
 # hiccup) aborts the script instead of silently printing "OK" while peers
@@ -39,8 +48,8 @@ ALERT_CONF="$HOME/.config/heartbeat-patrol.env"
 ALERT_LOG="$HOME/.openclaw/workspace/heartbeats/_alerts.log"
 
 # ----- Job catalog -----------------------------------------------------------
-# When adding a new cron, add an entry here and recall — staleness is computed
-# as: (now - last_heartbeat) > (interval + grace) hours.
+# When adding a new cron, add an entry here. Staleness is computed as:
+# (now - last_heartbeat) > (interval + grace) hours.
 declare -A JOB_INTERVAL JOB_GRACE JOB_DIR
 
 # Maintainer-side jobs (~/.openclaw/workspace/heartbeats/)

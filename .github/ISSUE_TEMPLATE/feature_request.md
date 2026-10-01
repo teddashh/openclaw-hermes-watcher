@@ -12,7 +12,7 @@ assignees: ''
 
 ## What you'd want it to look like
 
-<!-- A sketch. Doesn't have to be detailed code — just enough that someone reading can picture it. -->
+<!-- A sketch. Doesn't have to be detailed code, just enough that someone reading can picture it. -->
 
 ## What this would change in the architecture
 

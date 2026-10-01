@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# render-template.sh — substitute $VAR placeholders in templates using envsubst.
+# render-template.sh: substitute $VAR placeholders in templates using envsubst.
 #
 # Usage: render_template <input-file> <output-file>
-# Sources $REPO_ROOT/config/machine.env to get user values.
+# Does not load the config itself: the caller must source AND export the
+# values first (load_config in common.sh does both), because envsubst only
+# sees exported variables. Unexported values render as empty strings.
 # Uses envsubst with an explicit allowlist so unrelated $X tokens in templates
 # (e.g. embedded shell snippets, $(date), backslash-dollar literals) survive.
 #

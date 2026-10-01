@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 05-register-maintainer.sh — register the hermes-maintainer OpenClaw subagent.
+# 05-register-maintainer.sh: register the hermes-maintainer OpenClaw subagent.
 #
 # Pre-bakes AGENTS.md, IDENTITY.md, USER.md, MACHINE_LOG.md, study-notes/README.md
 # in the subagent workspace, then `openclaw agents add` to register, then makes
@@ -44,7 +44,7 @@ fi
 
 if [ ! -f "$SUBAGENT_WS_DIR/MACHINE_LOG.md" ]; then
     cat > "$SUBAGENT_WS_DIR/MACHINE_LOG.md" <<MLOG_EOF
-# MACHINE_LOG — hermes-maintainer
+# MACHINE_LOG: hermes-maintainer
 
 Subagent registered at $(date -u +%Y-%m-%dT%H:%M:%SZ).
 
@@ -87,7 +87,7 @@ elif openclaw agents list 2>/dev/null | grep -qE "^- ${SUBAGENT_NAME}\b"; then
 fi
 
 if $ALREADY_REGISTERED; then
-    info "Subagent '$SUBAGENT_NAME' already registered — skipping 'agents add'"
+    info "Subagent '$SUBAGENT_NAME' already registered, skipping 'agents add'"
 else
     info "Registering '$SUBAGENT_NAME' with OpenClaw..."
     openclaw agents add "$SUBAGENT_NAME" \
@@ -120,7 +120,7 @@ info "Restarting openclaw-gateway..."
 systemctl --user restart openclaw-gateway
 sleep 5
 systemctl --user is-active openclaw-gateway >/dev/null 2>&1 || \
-    die "gateway failed to restart — check journalctl --user -u openclaw-gateway"
+    die "gateway failed to restart (check journalctl --user -u openclaw-gateway)"
 ok "gateway restarted"
 
 emit_journal_event deploy_register_maintainer_completed "$SUBAGENT_NAME workspace=$SUBAGENT_WS_DIR"

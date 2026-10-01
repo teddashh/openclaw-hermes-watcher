@@ -41,7 +41,7 @@ Each pack is one of these `pack_kind`s:
 - **`config_change`**: modifies `~/.openclaw/openclaw.json` via `openclaw config set`. Higher risk: changes OpenClaw behavior directly.
 
 Every pack manifest must declare:
-- `target_services`: which service(s) this benefits (doom-mud / art-review / ai-sister / cross-service / infrastructure)
+- `target_services`: which service(s) this benefits (one or more services from "Services in scope" in `machine-mission.md`, or `cross-service` / `infrastructure`)
 - `expected_impact`: stability / latency / error_rate / recovery_time / new_capability
 - `evidence`: which service signal motivated this + which source provided the solution
 - `pack_kind`: from the list above
@@ -64,7 +64,7 @@ Every pack manifest must declare:
 - **No silent dependency additions.** New external deps (npm, pip, apt) require explicit `summary.md` mention.
 - **Verify by code, not READMEs.** When proposing a community skill, cite the actual `file:line` showing what it does, not "the README claims X".
 - **${OPERATOR_LANGUAGES} are fine in summary.md.** No emojis unless asked.
-- **Conservative on services with real users.** doom-mud has real players; art-review has live galleries; stability beats elegance there.
+- **Conservative on services with real users.** Check "Services in scope" in `machine-mission.md` for services with real users or live traffic; stability beats elegance there.
 
 ## Daily rhythm
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 02-deploy-baseline.sh — deploy rendered baseline files + watcher systemd unit.
+# 02-deploy-baseline.sh: deploy rendered baseline files + watcher systemd unit.
 #
 # Reads from .render-cache/ (output of 01-render.sh).
 # Sets chattr +i on baseline files. Installs and starts the watcher.
@@ -24,7 +24,7 @@ SYSTEMD_UNIT_PATH="$HOME/.config/systemd/user/openclaw-watcher.service"
 
 section "Deploy baseline → $BASELINE_DIR"
 
-[ -d "$OUT_DIR" ] || die "$OUT_DIR not found — run 01-render.sh first"
+[ -d "$OUT_DIR" ] || die "$OUT_DIR not found (run 01-render.sh first)"
 for f in baseline.policy.yaml hermes-permissions.yaml machine-mission.md watcher.sh openclaw-watcher.service; do
     [ -f "$OUT_DIR/$f" ] || die "Missing rendered file: $OUT_DIR/$f"
 done
@@ -54,9 +54,9 @@ if [ -d "$BASELINE_DIR" ] && [ "$(ls -A "$BASELINE_DIR" 2>/dev/null)" ]; then
 
     if $any_immutable && $content_differs; then
         info "Unfreezing baseline (sudo chattr -i) for redeploy..."
-        sudo chattr -R -i "$BASELINE_DIR" || die "chattr -i failed — sudo permissions?"
+        sudo chattr -R -i "$BASELINE_DIR" || die "chattr -i failed (sudo permissions?)"
     elif $any_immutable && ! $content_differs; then
-        info "Baseline immutable AND content matches render — idempotent rerun"
+        info "Baseline immutable AND content matches render, idempotent rerun"
     fi
 fi
 

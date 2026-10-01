@@ -1,6 +1,7 @@
 #!/bin/bash
-# watcher.sh — OpenClaw baseline sentinel.
-# See ARCHITECTURE.md (or docs/PHASE-2.5-HEARTBEAT.md) for the design rationale.
+# watcher.sh: OpenClaw baseline sentinel.
+# See README.md section 3.4 and ARCHITECTURE.md ("The watcher") for the design
+# rationale.
 #
 # Runs forever (systemd Restart=on-failure). Every 60s:
 #   - verify chattr +i flag still set on baseline files
@@ -76,7 +77,7 @@ check_immutability() {
     # Every yaml/md/sh in baseline dir + .expected-hashes + .expected-hashes.sha256
     # should have the +i flag.
     #
-    # Note: do NOT capture `find -print0` into a shell variable — command
+    # Note: do NOT capture `find -print0` into a shell variable, because command
     # substitution drops NUL bytes, collapsing the whole list to a single
     # token. We pipe directly into the read loop instead.
     local lost=0
@@ -172,7 +173,7 @@ main() {
     hour_marker=$(date +%H)
 
     while true; do
-        # If the journal isn't writable, no point running the other checks —
+        # If the journal isn't writable, no point running the other checks:
         # their emit_event calls would silently drop into the dead file.
         # Sleep and try again next cycle.
         if ! check_journal_writable; then
