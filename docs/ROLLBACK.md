@@ -1,6 +1,6 @@
 # Rollback / uninstall
 
-How to undo what `openclaw-hermes-watcher` installed. This does not uninstall OpenClaw itself — that's the upstream OpenClaw project's responsibility.
+How to undo what `openclaw-hermes-watcher` installed. This does not uninstall OpenClaw itself, which is the upstream OpenClaw project's responsibility.
 
 ## What gets installed
 
@@ -66,7 +66,7 @@ rm -f ~/.config/heartbeat-patrol.env
 rm -f ~/.local/bin/talk-*
 rm -rf ~/.local/share/openclaw-talk-helpers
 
-# 10. Optional: uninstall Hermes entirely (separate step — not from this template)
+# 10. Optional: uninstall Hermes entirely (separate step, not from this template)
 #     hermes uninstall  # if available, or manual removal of ~/.hermes/
 ```
 
@@ -77,5 +77,5 @@ After step 10 you've removed everything this template installed. The OpenClaw ma
 To go back to a specific phase only:
 
 - **Disable Phase 2 (Hermes Telegram):** `systemctl --user stop hermes-gateway-openclaw-evolution.service && systemctl --user disable hermes-gateway-openclaw-evolution.service` and clear `messaging.telegram.enabled` in Hermes config.
-- **Disable Phase 1.5 (maintainer Telegram):** clear `gateway.telegram.bots.hermes-maintainer.*` in `~/.openclaw/openclaw.json` and restart `openclaw-gateway`.
-- **Disable Phase 2.5 (cross-patrol):** there is no `machine.env` knob for this; partial-rollback is manual. Remove `~/.local/bin/heartbeat-patrol` and edit each of the four maintainer cron prompts via `openclaw cron edit <id> --message "<message-without-the-STEP-1-prefix>"` to drop the heartbeat-patrol invocation. The script's prefix is added by `scripts/06-cron-setup.sh` only when re-running the install — if you re-run it after manual prompt edits, the prefix comes back. To make the change permanent, fork the template and remove `heartbeat_prefix_for` calls from `scripts/06-cron-setup.sh`.
+- **Disable Phase 1.5 (maintainer Telegram):** remove the `channels.telegram.accounts.hermes-maintainer` entry (its `botToken`, plus the `proxy` that `scripts/10-tg-maintainer.sh` sets on first setup) from `~/.openclaw/openclaw.json`, then `systemctl --user restart openclaw-gateway`.
+- **Disable Phase 2.5 (cross-patrol):** there is no `machine.env` knob for this; partial-rollback is manual. Remove `~/.local/bin/heartbeat-patrol` and edit each of the four maintainer cron prompts via `openclaw cron edit <id> --message "<message-without-the-STEP-1-prefix>"` to drop the heartbeat-patrol invocation. The script's prefix is added by `scripts/06-cron-setup.sh` only when re-running the install: if you re-run it after manual prompt edits, the prefix comes back. To make the change permanent, fork the template and remove `heartbeat_prefix_for` calls from `scripts/06-cron-setup.sh`.

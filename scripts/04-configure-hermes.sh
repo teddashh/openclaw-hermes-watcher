@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 04-configure-hermes.sh — create the openclaw-evolution profile and write
+# 04-configure-hermes.sh: create the openclaw-evolution profile and write
 # its SOUL/USER/MEMORY from the rendered templates.
 #
 # Idempotent.
@@ -17,20 +17,20 @@ OUT_DIR="$REPO_ROOT/.render-cache"
 
 section "Configure Hermes profile: $PROFILE"
 
-command -v hermes >/dev/null 2>&1 || die "hermes not on PATH — did 03 run?"
+command -v hermes >/dev/null 2>&1 || die "hermes not on PATH (did 03 run?)"
 [ -f "$BASELINE_DIR/machine-mission.md" ] || die "Baseline missing"
 [ -f "$OUT_DIR/SOUL.md" ] || die "Run 01-render.sh first"
 
 emit_journal_event deploy_configure_hermes_started "profile=$PROFILE"
 
-# Step A: profile create (idempotent — if exists, reuse)
+# Step A: profile create (idempotent: if exists, reuse)
 info "Creating profile '$PROFILE' (idempotent)..."
 if hermes profile create "$PROFILE" --no-alias >/dev/null 2>&1; then
     ok "Profile '$PROFILE' created"
 elif hermes profile list 2>/dev/null | grep -q "\b$PROFILE\b"; then
-    info "Profile '$PROFILE' already exists — reusing"
+    info "Profile '$PROFILE' already exists, reusing"
 elif hermes -p "$PROFILE" config show >/dev/null 2>&1; then
-    info "Profile '$PROFILE' exists per 'config show' — reusing"
+    info "Profile '$PROFILE' exists per 'config show', reusing"
 else
     die "Could not create or locate profile '$PROFILE'. Run 'hermes profile list' and 'hermes doctor'."
 fi
@@ -45,15 +45,15 @@ ok "Profile dir: $PROFILE_DIR"
 
 # Step C: write SOUL.md (per-profile)
 #
-# SOUL.md is mutable agent state — Hermes itself rewrites it during the
-# Thursday self-correct rotation, the operator may hand-edit it, and the
+# SOUL.md is mutable agent state: Hermes itself rewrites it during the
+# Saturday self-correct rotation, the operator may hand-edit it, and the
 # upstream template's SOUL.md.tmpl may also evolve. None of these three
 # wins by default. Behavior:
 #   - missing                                 -> write fresh from rendered template (initial install)
 #   - exists, identical to rendered           -> no-op
 #   - exists, BUT it's the Hermes installer's generic default              -> replace from rendered
 #     (the installer recreates a default SOUL.md if its profile dir exists
-#     without one — a re-install of an already-deployed profile sees the
+#     without one, so a re-install of an already-deployed profile sees the
 #     installer-default and would otherwise mistake it for "operator's edited SOUL")
 #   - exists, differs from rendered AND not generic                         -> preserve current, warn
 #     (operator or Hermes self-correction wrote it; their version wins)
@@ -63,10 +63,10 @@ if [ ! -f "$PROFILE_DIR/SOUL.md" ]; then
     cp "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"
     ok "SOUL.md written to $PROFILE_DIR (initial)"
 elif cmp -s "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"; then
-    info "SOUL.md unchanged — preserving"
+    info "SOUL.md unchanged, preserving"
 elif grep -qF "$HERMES_GENERIC_SOUL_MARKER" "$PROFILE_DIR/SOUL.md" 2>/dev/null; then
     cp "$OUT_DIR/SOUL.md" "$PROFILE_DIR/SOUL.md"
-    ok "SOUL.md was Hermes installer's generic default — replaced with rendered service-chain version"
+    ok "SOUL.md was Hermes installer's generic default, replaced with rendered service-chain version"
 else
     warn "SOUL.md exists at $PROFILE_DIR/SOUL.md and differs from rendered template (and is not generic Hermes default)."
     warn "  Hermes may have self-corrected this file, or you may have hand-edited it."
@@ -83,7 +83,7 @@ if [ ! -f "$MEMORIES_DIR/USER.md" ]; then
     cp "$OUT_DIR/USER.md" "$MEMORIES_DIR/USER.md"
     ok "USER.md written to $MEMORIES_DIR (global)"
 else
-    info "USER.md already exists at $MEMORIES_DIR — preserving (operator may have edited)"
+    info "USER.md already exists at $MEMORIES_DIR, preserving (operator may have edited)"
 fi
 
 if [ ! -f "$MEMORIES_DIR/MEMORY.md" ]; then
@@ -93,13 +93,13 @@ elif grep -qE 'version at install: unknown|Bootstrapped at TBD' "$MEMORIES_DIR/M
     # Earlier botched install left "unknown" baked in. Refresh from the
     # rendered template (which now has the correct values because 03 re-ran
     # 01-render after Hermes was on PATH).
-    warn "MEMORY.md contains 'unknown' or 'TBD' from an earlier bootstrap — refreshing"
+    warn "MEMORY.md contains 'unknown' or 'TBD' from an earlier bootstrap, refreshing"
     cp "$OUT_DIR/MEMORY.md" "$MEMORIES_DIR/MEMORY.md"
 else
-    info "MEMORY.md already exists at $MEMORIES_DIR — preserving"
+    info "MEMORY.md already exists at $MEMORIES_DIR, preserving"
 fi
 
-# Step E: configure profile (model, etc.) via hermes config set
+# Step E: set profile config via hermes config set (Phase 1: messaging gateways off)
 # We try with --strict-json first (newer hermes); fall back to plain config set.
 config_set() {
     local key="$1" val="$2"

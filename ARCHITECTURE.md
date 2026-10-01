@@ -18,7 +18,7 @@ Rule of thumb: **if you can't tell from a directory listing what each role is do
    ┌─────────────────────────────────────────────────────┐
    │ OpenClaw workspace subagents                         │
    │ ─────────────────────────────────────────────────── │
-   │ <project subagents — your project's domain>          │
+   │ <project subagents: your project's domain>           │
    │ hermes-maintainer (~/hermes-maintainer/.openclaw-ws/) │
    └────────────────────┬────────────────────────────────┘
                         │ "hermes-maintainer" reads/runs:
@@ -37,7 +37,7 @@ Rule of thumb: **if you can't tell from a directory listing what each role is do
 
 The human. Ultimate authority. The architecture exists to *not* require the operator to babysit; it preserves the operator's ability to walk in cold and understand state, but does not require it.
 
-**Cannot:** N/A — the operator can do anything, but the architecture is designed so they don't have to do most of it.
+**Cannot:** N/A. The operator can do anything, but the architecture is designed so they don't have to do most of it.
 
 ### OpenClaw main agent
 
@@ -49,11 +49,11 @@ The human. Ultimate authority. The architecture exists to *not* require the oper
 
 Each manages its own project directory. They own everything inside their project, may use `MACHINE_MAP.md` to coordinate on shared infra, and notify main for cross-project work.
 
-This template adds **one** workspace subagent: `hermes-maintainer`. Your project subagents (e.g., `web-app`, `worker`) are out of scope for this template — register them yourself via `openclaw agents add`.
+This template adds **one** workspace subagent: `hermes-maintainer`. Your project subagents (e.g., `web-app`, `worker`) are out of scope for this template. Register them yourself via `openclaw agents add`.
 
 #### hermes-maintainer
 
-**Owns:** `~/hermes-maintainer/.openclaw-ws/` — its own workspace dir. Acts on `~/.hermes/` only via the documented `hermes` CLI.
+**Owns:** `~/hermes-maintainer/.openclaw-ws/` (its own workspace dir). Acts on `~/.hermes/` only via the documented `hermes` CLI.
 
 **Allowed:**
 - Run `hermes doctor`, `hermes status`, `hermes -p openclaw-evolution insights --days N`
@@ -93,14 +93,14 @@ Roles do **not** chat with each other. They communicate by writing structured fi
 
 `~/.openclaw/workspace/baseline/` contains four files plus two integrity hashes:
 
-- `baseline.policy.yaml` — `forbidden_actions`, `immutable_paths`, `allow_write_for_main`, `change_budget`, `require_approval`
-- `hermes-permissions.yaml` — what Hermes may/may-not do
-- `machine-mission.md` — what this host is for
-- `watcher.sh` — periodic sentinel
-- `.expected-hashes` — sha256 of the four files above
-- `.expected-hashes.sha256` — meta-hash, sha256 of `.expected-hashes` itself (closes the chicken-and-egg of self-referencing)
+- `baseline.policy.yaml`: `forbidden_actions`, `immutable_paths`, `allow_write_for_main`, `change_budget`, `require_approval`
+- `hermes-permissions.yaml`: what Hermes may/may-not do
+- `machine-mission.md`: what this host is for
+- `watcher.sh`: periodic sentinel
+- `.expected-hashes`: sha256 of the four files above
+- `.expected-hashes.sha256`: meta-hash, sha256 of `.expected-hashes` itself (closes the chicken-and-egg of self-referencing)
 
-All six are `chattr +i` (immutable) after deploy. Modifying them requires `sudo chattr -i` first — and `chattr -i` requires sudo, which agents don't have. Operator edits go through `scripts/edit-baseline.sh`.
+All six are `chattr +i` (immutable) after deploy. Modifying them requires `sudo chattr -i` first, and `chattr -i` requires sudo, which agents don't have. Operator edits go through `scripts/edit-baseline.sh`.
 
 ## The watcher
 
@@ -110,7 +110,7 @@ A pure-bash systemd user unit firing every 60 seconds. It checks:
 - The meta-hash of `.expected-hashes` matches `.expected-hashes.sha256`
 - `openclaw-gateway` process is running
 
-Anomalies emit JSONL events to `evolution-journal.jsonl`. The watcher does not act on anomalies — it just records them. The main agent (or operator on next visit) reads and decides.
+Anomalies emit JSONL events to `evolution-journal.jsonl`. The watcher does not act on anomalies: it just records them. The main agent (or operator on next visit) reads and decides.
 
 The watcher is rule-based, not LLM-based. It cannot be talked into anything.
 
@@ -123,9 +123,9 @@ Five scheduled jobs run regularly:
 - `hermes_monthly_compress` (maintainer, 05:30 local 1st of month)
 - `openclaw-daily-study` (Hermes-side, 10:00 UTC daily)
 
-Each, on success, writes a heartbeat file with its current timestamp + interval + grace. Then it patrols the four other heartbeats; if any is stale beyond `interval + grace`, it sends a Telegram alert via the configured bot (default: maintainer's `@*_watchbot`).
+Each, as its first step, writes a heartbeat file with its current timestamp + interval + grace. Then it patrols the four other heartbeats; if any is stale beyond `interval + grace`, it sends a Telegram alert via the configured bot (default: maintainer's `@*_watchbot`).
 
-This is a deterministic dead-man-switch: a healthy system is silent; only a missed run produces an alert. There's no "default broken" alarm to clear — *fresh heartbeat* is the dismissal, and every cron writes one when it succeeds.
+This is a deterministic dead-man-switch: a healthy system is silent; only a missed run produces an alert. There's no "default broken" alarm to clear: *fresh heartbeat* is the dismissal, and every job writes one each time it runs.
 
 The alerter (`heartbeat-patrol`) is pure bash, deterministic, with a hard-coded job catalog. If you add a new cron, add it to the catalog in `lib/heartbeat-patrol.sh` (and re-deploy via `scripts/06-cron-setup.sh`).
 
@@ -135,8 +135,8 @@ See [README.md](README.md) for the canonical list.
 
 ## Why this division
 
-The four-role split lets the operator walk away. Each role's footprint is in plain markdown / JSONL / YAML — readable by humans, by future Claude Code rescues, and by other agents in the system. No proprietary state.
+The four-role split lets the operator walk away. Each role's footprint is in plain markdown / JSONL / YAML, readable by humans, by future Claude Code rescues, and by other agents in the system. No proprietary state.
 
-The hard baseline + watcher means nothing the LLM agents do can take down its own observation channel: the watcher reads `chattr +i` files (cannot be tampered with at the agent level); it writes append-only JSONL (cannot be silenced by truncation without leaving a hash mismatch); it runs as a systemd unit (cannot be stopped without sudo).
+The hard baseline + watcher protect the observation channel where it matters most: the watcher reads `chattr +i` files, and changing those needs root, so agents without sudo cannot tamper with them. Two parts are policy rather than mechanism. The journal is append-only by convention: the watcher only appends to it, but nothing detects truncation yet (`delete_evolution_journal` in `baseline.policy.yaml` is marked `todo_implement`). And the watcher is a systemd user unit owned by the agents' user, so it can be stopped without sudo; stopping it is forbidden by policy (`disable_watcher`), not prevented, and a clean stop leaves one `watcher_stopped` event. See [README §10 Known Limitations](README.md#10-known-limitations).
 
-The cross-patrol heartbeat means that a stuck cron also surfaces — not just a broken file. A genuinely broken host (both agents asleep) is the only failure mode the patrol misses; the watcher's gateway-up check covers that.
+The cross-patrol heartbeat means that a stuck cron also surfaces, not just a broken file. A genuinely broken host (both agents asleep) is the only failure mode the patrol misses; the watcher's gateway-up check covers that.
