@@ -171,7 +171,15 @@ if [ "${#ALERTS[@]}" -gt 0 ]; then
       echo "Telegram send failed; alert logged only." >&2
     fi
   else
-    echo "No TELEGRAM_BOT_TOKEN configured; alert logged only." >&2
+    # Name the missing setting(s) so a half-filled alert config is easy to spot.
+    if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+      missing="TELEGRAM_CHAT_ID"
+    elif [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+      missing="TELEGRAM_BOT_TOKEN"
+    else
+      missing="TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID"
+    fi
+    echo "No $missing configured; alert logged only." >&2
   fi
 fi
 exit 0
