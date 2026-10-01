@@ -196,7 +196,7 @@
         },
         "body": {
           "en": "Monday reads a service log; later days cover upstream commits, community skills and plugins, drafting, and pack review. Saturday prunes memory, Sunday is off. The prompt caps each run at 30 minutes or 30 turns.",
-          "zh": "週一讀服務日誌，接下來幾天依序看上游 commit、社群 skill 與 plugin、起草 pack、檢查 pack 是否就緒。週六整理記憶，週日休息。prompt 要求每次不超過 30 分鐘或 30 輪。"
+          "zh": "週一讀服務日誌，接下來幾天依序看上游 commit、社群 skill 與 plugin，起草 pack，再檢查 pack 是否就緒。週六整理記憶，週日休息。prompt 要求每次不超過 30 分鐘或 30 輪。"
         }
       },
       {
@@ -579,7 +579,7 @@
       },
       {
         "en": "Config paths were verified against OpenClaw v2026.5.x. On 2026.5.20 or later, talk-helpers on main finds only the two default agents; the fix is in open pull request #1",
-        "zh": "設定路徑是以 OpenClaw v2026.5.x 驗證。2026.5.20 以後，main 分支的 talk-helpers 只找得到兩個預設 agent，修正還在尚未合併的 PR #1"
+        "zh": "設定路徑是以 OpenClaw v2026.5.x 驗證的。2026.5.20 以後，main 分支的 talk-helpers 只找得到兩個預設 agent，修正還在尚未合併的 PR #1"
       },
       {
         "en": "The daily-study prompt spells out /home/ubuntu paths, so another Linux user needs a template edit",
