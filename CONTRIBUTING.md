@@ -44,7 +44,7 @@ This template was extracted from a working host. The cleanest test is to install
 
 1. New host with OpenClaw already installed
 2. Fork → clone → `bash scripts/all.sh`
-3. Run `bash scripts/07-smoke-test.sh` and verify 39+/0/0
+3. Run `bash scripts/07-smoke-test.sh` and check its result line: every check should pass, with 0 warn and 0 fail (41 checks at the time of writing)
 4. Trigger one cron manually (`openclaw cron run <id>`) and inspect the result
 
 If you don't have a spare host, render-only tests catch ~70% of breakage; the remaining ~30% are "this script's behavior on a real Hermes / OpenClaw install" edge cases.

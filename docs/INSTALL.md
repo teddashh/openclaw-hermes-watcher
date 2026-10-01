@@ -46,12 +46,14 @@ $EDITOR config/machine.env.secrets
 
 - `OPERATOR_NAME`, `OPERATOR_HANDLE`, `OPERATOR_EMAIL`: how agents address you
 - `MACHINE_NAME`, `MACHINE_ROLE`: what this host is for
-- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD`: Markdown bullet lists for `machine-mission.md`
 
 `machine.env` optional but recommended:
 
+- `MACHINE_SERVICES_MD`, `MACHINE_OUT_OF_SCOPE_MD`: Markdown bullet lists for the "Services in scope" and "Out of scope" sections of `machine-mission.md`, which Hermes and the maintainer read to decide what to study and what to leave alone. If either is empty, the install still runs and writes "- (no services declared)" or "- (no out-of-scope items declared)" in its place.
 - `OPERATOR_TELEGRAM_USER_ID` (get yours from `@userinfobot`): needed for any Telegram phases
 - `TG_BOT_*_NAME`: bot usernames (the @handle), one per agent
+
+Values in `machine.env.example` that start with `REQUIRED:` or `OPTIONAL:` are placeholders: replace them, or empty the optional ones. The scripts use whatever text is there, so a leftover placeholder ends up in the rendered files (the sample services, for example, would be listed in `machine-mission.md` as this host's services).
 
 `machine.env.secrets` (optional per phase):
 
