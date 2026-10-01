@@ -1,0 +1,668 @@
+{
+  "repo": "teddashh/openclaw-hermes-watcher",
+  "slug": "openclaw-hermes-watcher",
+  "name": "openclaw-hermes-watcher",
+  "mark": "HW",
+  "palette": "moss",
+  "default_branch": "main",
+  "verified": "2026-09-30",
+  "language": "Shell",
+  "license": {
+    "spdx": "Apache-2.0",
+    "label": {
+      "en": "Apache-2.0",
+      "zh": "Apache-2.0 授權"
+    },
+    "href": "LICENSE"
+  },
+  "title": {
+    "en": "A guarded evolution layer for OpenClaw hosts",
+    "zh": "OpenClaw 主機的守護型演化層"
+  },
+  "description": {
+    "en": "Adds a Hermes study agent, a guardian subagent, a chattr-frozen policy baseline, and a cross-patrol heartbeat to an existing OpenClaw host. Hermes only drafts changes; high-risk ones wait for the operator.",
+    "zh": "在既有的 OpenClaw 主機上加裝負責研究的 Hermes agent、看顧它的 subagent、以 chattr 凍結的政策基線，以及交叉巡邏心跳。Hermes 只能起草變更，高風險的變更要等管理者核准。"
+  },
+  "hero": {
+    "eyebrow": {
+      "en": "Agent governance · OpenClaw + Hermes",
+      "zh": "Agent 治理 · OpenClaw + Hermes"
+    },
+    "headline": {
+      "en": "Let the agent study. <em>Keep</em> the keys.",
+      "zh": "讓 agent 去研究，<em>鑰匙</em>留在你手上。"
+    },
+    "lede": {
+      "en": "A drop-in layer for an existing OpenClaw host. Hermes studies what should improve, a maintainer watches Hermes, plain Bash watches both, and high-risk changes still wait for you.",
+      "zh": "裝在既有 OpenClaw 主機上的一層。Hermes 研究哪裡該改進，維護用的 subagent 看著 Hermes，單純的 Bash 再看著兩者，高風險的變更仍然要等你點頭。"
+    },
+    "primary": {
+      "href": "#start",
+      "label": {
+        "en": "Install in five commands",
+        "zh": "五個指令完成安裝"
+      }
+    },
+    "secondary": {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher",
+      "label": {
+        "en": "View source",
+        "zh": "查看原始碼"
+      }
+    },
+    "notes": [
+      "Apache-2.0",
+      "Bash + systemd",
+      {
+        "en": "No edits to OpenClaw or Hermes code",
+        "zh": "不修改 OpenClaw 與 Hermes 的程式碼"
+      }
+    ],
+    "visual": {
+      "type": "receipt",
+      "top": {
+        "en": "Cross-patrol heartbeat",
+        "zh": "交叉巡邏心跳"
+      },
+      "badge": {
+        "en": "Quiet",
+        "zh": "安靜"
+      },
+      "name": "heartbeat-patrol",
+      "meta": {
+        "en": "Default schedules · stale after interval + grace",
+        "zh": "預設排程 · 超過週期加寬限才算逾時"
+      },
+      "rows": [
+        {
+          "state": "ok",
+          "label": "hermes_daily_doctor",
+          "detail": "hermes doctor · 30 4 * * *",
+          "side": "24h+6h"
+        },
+        {
+          "state": "ok",
+          "label": "hermes_upstream_watch",
+          "detail": "gh release list · 0 5 * * *",
+          "side": "24h+6h"
+        },
+        {
+          "state": "ok",
+          "label": "hermes_weekly_review",
+          "detail": "hermes insights · 0 5 * * 1",
+          "side": "168h+24h"
+        },
+        {
+          "state": "ok",
+          "label": "hermes_monthly_compress",
+          "detail": "/compress · 30 5 1 * *",
+          "side": "720h+72h"
+        },
+        {
+          "state": "ok",
+          "label": "hermes_daily_study",
+          "detail": "hermes cron · 0 10 * * * UTC",
+          "side": "24h+6h"
+        }
+      ],
+      "footer": {
+        "left": {
+          "en": "No alert sent",
+          "zh": "未發出警報"
+        },
+        "right": {
+          "en": "5 / 5 fresh",
+          "zh": "5 / 5 正常"
+        }
+      }
+    }
+  },
+  "stats": [
+    {
+      "value": "v0.1.7",
+      "label": {
+        "en": "Latest release, May 2026",
+        "zh": "最新版本，2026 年 5 月"
+      }
+    },
+    {
+      "value": "5",
+      "label": {
+        "en": "Scheduled jobs with heartbeats",
+        "zh": "具心跳監測的排程工作"
+      }
+    },
+    {
+      "value": "60s",
+      "label": {
+        "en": "Baseline check interval",
+        "zh": "基線檢查週期"
+      }
+    },
+    {
+      "value": "0",
+      "label": {
+        "en": "Edits to OpenClaw or Hermes code",
+        "zh": "對 OpenClaw、Hermes 程式碼的修改"
+      }
+    }
+  ],
+  "problem": {
+    "kicker": {
+      "en": "The problem",
+      "zh": "問題在哪裡"
+    },
+    "title": {
+      "en": "Long-running agents drift, or they overreach.",
+      "zh": "長期運作的 agent，不是漂移，就是越權。"
+    },
+    "body": {
+      "en": "A daily upstream-diff cron turns into alert fatigue. An ad-hoc agent session starts cold every time. An agent that updates itself can also rewrite the alarm meant to catch it. This layer separates learning, operating, watching, and approving.",
+      "zh": "每天比對上游的 cron，最後變成警報疲勞。臨時開的 agent session 每次都從零開始。能自我更新的 agent，也可能改掉原本要抓它的警報。這一層把學習、執行、監看與核准拆開。"
+    },
+    "quote": {
+      "en": "The first thing a misaligned agent learns to do is silence the alert that would have caught it.",
+      "zh": "偏離目標的 agent，最先學會的往往是讓那個會抓到它的警報安靜下來。"
+    }
+  },
+  "flow": {
+    "kicker": {
+      "en": "How it works",
+      "zh": "運作方式"
+    },
+    "title": {
+      "en": "Study daily. Decide monthly.",
+      "zh": "每天研究，每月決定。"
+    },
+    "intro": {
+      "en": "Install once on a host that already runs OpenClaw. After that, the system works quietly and leaves its findings in files.",
+      "zh": "在已經跑著 OpenClaw 的主機上安裝一次。之後系統安靜運作，把發現留在檔案裡。"
+    },
+    "steps": [
+      {
+        "title": {
+          "en": "Install on a working host",
+          "zh": "裝在已運作的主機上"
+        },
+        "body": {
+          "en": "Render templates, freeze the baseline, install Hermes if it is missing, add one profile, register the maintainer, and schedule five jobs. Every step is safe to re-run.",
+          "zh": "渲染範本、凍結基線、需要時安裝 Hermes、新增一個 profile、註冊維護用的 subagent，再排好五個排程。每一步都可以重複執行。"
+        }
+      },
+      {
+        "title": {
+          "en": "Hermes studies by weekday",
+          "zh": "Hermes 依星期輪替研究"
+        },
+        "body": {
+          "en": "Monday reads a service log; later days cover upstream commits, community skills and plugins, drafting, and pack review. Saturday prunes memory, Sunday is off. The prompt caps each run at 30 minutes or 30 turns.",
+          "zh": "週一讀服務日誌，接下來幾天依序看上游 commit、社群 skill 與 plugin，起草 pack，再檢查 pack 是否就緒。週六整理記憶，週日休息。prompt 要求每次不超過 30 分鐘或 30 輪。"
+        }
+      },
+      {
+        "title": {
+          "en": "Proposals become packs",
+          "zh": "提案變成 pack"
+        },
+        "body": {
+          "en": "Each evolution pack declares its kind, target services, evidence, and a rollback command. Hermes can draft one. It cannot apply one.",
+          "zh": "每個 evolution pack 都寫明類型、影響的服務、證據與回滾指令。Hermes 可以起草，但不能套用。"
+        }
+      },
+      {
+        "title": {
+          "en": "You decide",
+          "zh": "由你決定"
+        },
+        "body": {
+          "en": "Healthy operation is silent. Read the journal, review the packs that need you, and hear from Telegram only when a job misses its window.",
+          "zh": "正常運作時完全安靜。讀 journal、審查需要你決定的 pack，只有排程錯過時間窗時，Telegram 才會通知你。"
+        }
+      }
+    ]
+  },
+  "capabilities": {
+    "kicker": {
+      "en": "What you get",
+      "zh": "你會得到什麼"
+    },
+    "title": {
+      "en": "Oversight that does not depend on trust.",
+      "zh": "不靠信任的監督。"
+    },
+    "intro": {
+      "en": "The parts that must never be talked out of their job are plain code. The parts that need judgment are agents, and Hermes, the one that studies, can only propose.",
+      "zh": "絕對不能被說服放棄職責的部分，用單純的程式；需要判斷的部分交給 agent，而負責研究的 Hermes 只能提案。"
+    },
+    "items": [
+      {
+        "title": {
+          "en": "Immutable policy baseline",
+          "zh": "不可變的政策基線"
+        },
+        "body": {
+          "en": "Policy, permission, and mission files, plus the watcher script, are deployed with chattr +i. Changing them takes sudo chattr -i first, and the watcher logs any file that loses the flag.",
+          "zh": "政策、權限、任務檔與 watcher 腳本都以 chattr +i 部署。要修改就得先 sudo chattr -i，任何檔案失去不可變屬性，watcher 都會記下來。"
+        },
+        "tag": "baseline.policy.yaml"
+      },
+      {
+        "title": {
+          "en": "Deterministic watcher",
+          "zh": "確定性的 watcher"
+        },
+        "body": {
+          "en": "A small Bash loop under a systemd user unit checks the immutable flag, SHA-256 hashes, and the gateway process every 60 seconds, and logs anomalies to the journal. It is code, not a model.",
+          "zh": "一支由 systemd user unit 管理的小型 Bash 迴圈，每 60 秒檢查不可變屬性、SHA-256 雜湊與 gateway 程序，異常就寫進 journal。它是程式，不是模型。"
+        },
+        "tag": "lib/watcher.sh"
+      },
+      {
+        "title": {
+          "en": "Cross-patrol heartbeats",
+          "zh": "交叉巡邏心跳"
+        },
+        "body": {
+          "en": "Every scheduled job writes its heartbeat before its real task, then checks the other four. A missed run shows up in the next peer's patrol; healthy runs send nothing.",
+          "zh": "每個排程工作先寫心跳再做正事，接著檢查另外四個工作。有工作漏跑，下一個執行的工作巡邏時就會發現；正常執行時什麼都不發。"
+        },
+        "tag": "lib/heartbeat-patrol.sh"
+      },
+      {
+        "title": {
+          "en": "A guardian for Hermes",
+          "zh": "Hermes 的守護者"
+        },
+        "body": {
+          "en": "The hermes-maintainer subagent runs doctor checks, upstream watch, a weekly review, and monthly compaction. It reports. It cannot upgrade Hermes.",
+          "zh": "hermes-maintainer 這個 subagent 負責 doctor 檢查、上游追蹤、每週回顧與每月壓縮。它只回報，不能自行升級 Hermes。"
+        },
+        "tag": "hermes-maintainer"
+      },
+      {
+        "title": {
+          "en": "Packs with rollback",
+          "zh": "附回滾的 pack"
+        },
+        "body": {
+          "en": "Five pack kinds, from skill installs to config changes. Skill, plugin, and upstream-patch packs can apply inside a weekly change budget; custom work and config changes wait for review. Each one carries evidence and a rollback.",
+          "zh": "五種 pack 類型，從安裝 skill 到修改設定。skill、plugin 與上游 patch 可以在每週變更額度內套用；自行設計的變更與設定修改要等審查。每個 pack 都附上證據與回滾方式。"
+        },
+        "tag": "upgrade-packs/inbox/"
+      },
+      {
+        "title": {
+          "en": "State you can read",
+          "zh": "看得懂的狀態"
+        },
+        "body": {
+          "en": "Everything this layer writes (journal, notes, packs, heartbeats) is plain JSONL, Markdown, YAML, or one-line text. A future operator, or a rescue session, can read it with cat.",
+          "zh": "這一層寫下的所有東西（journal、筆記、pack、心跳）都是純 JSONL、Markdown、YAML 或單行文字。未來的管理者或救援 session，用 cat 就讀得懂。"
+        },
+        "tag": "evolution-journal.jsonl"
+      }
+    ]
+  },
+  "architecture": {
+    "kicker": {
+      "en": "Architecture",
+      "zh": "系統架構"
+    },
+    "title": {
+      "en": "Four roles, one principal.",
+      "zh": "四個角色，一個決策者。"
+    },
+    "intro": {
+      "en": "The agents do not negotiate over a hidden live channel. They exchange files the operator can inspect, and deterministic code guards the cognitive parts.",
+      "zh": "Agent 之間不透過隱藏的即時通道協商，而是交換管理者看得到的檔案。認知型的部分，由確定性的程式看守。"
+    },
+    "label": {
+      "en": "Draft → flag → verify → approve",
+      "zh": "起草 → 標記 → 驗證 → 核准"
+    },
+    "nodes": [
+      {
+        "name": "Hermes",
+        "lines": [
+          "openclaw-evolution",
+          {
+            "en": "Studies, drafts packs",
+            "zh": "研究並起草 pack"
+          },
+          {
+            "en": "Cannot apply",
+            "zh": "不能套用"
+          }
+        ]
+      },
+      {
+        "name": {
+          "en": "Guardian",
+          "zh": "守護者"
+        },
+        "lines": [
+          "hermes-maintainer",
+          {
+            "en": "Flags packs for main",
+            "zh": "把 pack 轉給主 agent"
+          },
+          {
+            "en": "Cannot upgrade Hermes",
+            "zh": "不能升級 Hermes"
+          }
+        ]
+      },
+      {
+        "name": {
+          "en": "Main",
+          "zh": "主 agent"
+        },
+        "lines": [
+          {
+            "en": "OpenClaw agent",
+            "zh": "OpenClaw 內建"
+          },
+          {
+            "en": "Verifies packs",
+            "zh": "驗證 pack"
+          },
+          {
+            "en": "Applies within budget",
+            "zh": "額度內套用"
+          }
+        ]
+      },
+      {
+        "name": {
+          "en": "Operator",
+          "zh": "管理者"
+        },
+        "core": true,
+        "lines": [
+          {
+            "en": "Approves high-risk packs",
+            "zh": "核准高風險 pack"
+          },
+          {
+            "en": "Holds sudo and chattr",
+            "zh": "掌握 sudo 與 chattr"
+          },
+          {
+            "en": "Runs hermes update",
+            "zh": "執行 hermes update"
+          }
+        ]
+      }
+    ],
+    "return": "watcher.sh · heartbeat-patrol.sh · evolution-journal.jsonl",
+    "principles": {
+      "title": {
+        "en": "The boundary is the product.",
+        "zh": "邊界本身就是產品。"
+      },
+      "items": [
+        {
+          "en": "Never edits OpenClaw or Hermes installed code",
+          "zh": "絕不修改 OpenClaw 或 Hermes 已安裝的程式碼"
+        },
+        {
+          "en": "Integrates only through public CLIs and documented paths",
+          "zh": "只透過公開 CLI 與文件記載的路徑整合"
+        },
+        {
+          "en": "openclaw upgrade and hermes update keep working",
+          "zh": "openclaw upgrade 與 hermes update 照常運作"
+        },
+        {
+          "en": "Bot tokens live in a separate, gitignored secrets file",
+          "zh": "Bot token 放在獨立且不進 git 的 secrets 檔"
+        },
+        {
+          "en": "Healthy operation sends no messages",
+          "zh": "正常運作時不發任何訊息"
+        }
+      ]
+    }
+  },
+  "decisions": {
+    "kicker": {
+      "en": "Design decisions",
+      "zh": "設計取捨"
+    },
+    "title": {
+      "en": "Why it is shaped this way.",
+      "zh": "為什麼長這個樣子。"
+    },
+    "items": [
+      {
+        "title": {
+          "en": "A layer, not a fork",
+          "zh": "是一層，不是 fork"
+        },
+        "body": {
+          "en": "Forking OpenClaw or Hermes would mean owning their upgrades forever. Staying on public CLIs lets upstream releases flow through, and keeps this repository small.",
+          "zh": "fork OpenClaw 或 Hermes，等於永遠要自己扛升級。只走公開 CLI，上游版本可以直接流進來，這個 repo 也能維持精簡。"
+        }
+      },
+      {
+        "title": {
+          "en": "Bash for the guard, a model for the thinking",
+          "zh": "看守用 Bash，思考交給模型"
+        },
+        "body": {
+          "en": "Anything that must never be argued out of its job is plain Bash under systemd. Models are used where judgment helps, never as the last line of defense.",
+          "zh": "任何不能被說服放棄職責的東西，都是 systemd 管理的純 Bash。模型只用在需要判斷的地方，絕不當最後一道防線。"
+        }
+      },
+      {
+        "title": {
+          "en": "Silence is the healthy state",
+          "zh": "安靜才是健康"
+        },
+        "body": {
+          "en": "Approval fatigue quietly kills oversight. The heartbeat design alerts only when a job actually misses its window, so every message deserves a look.",
+          "zh": "審批疲勞會悄悄讓監督失效。心跳設計只在排程真的錯過時間窗時才通知，所以每一則訊息都值得看。"
+        }
+      }
+    ]
+  },
+  "quickstart": {
+    "kicker": {
+      "en": "Start here",
+      "zh": "從這裡開始"
+    },
+    "title": {
+      "en": "Five commands on an existing host.",
+      "zh": "五個指令，就能裝好。"
+    },
+    "intro": {
+      "en": "You need a Linux host where OpenClaw already runs, an authenticated gh CLI, sudo for chattr, and bash 4+, jq, curl, envsubst, and systemd user services with linger enabled. Telegram is optional.",
+      "zh": "你需要一台已經在跑 OpenClaw 的 Linux 主機、登入好的 gh CLI、可以執行 chattr 的 sudo 權限，以及 bash 4+、jq、curl、envsubst，還有開啟 linger 的 systemd user service。Telegram 可有可無。"
+    },
+    "primary": {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/docs/INSTALL.md",
+      "label": {
+        "en": "Install guide",
+        "zh": "安裝指南"
+      }
+    },
+    "secondary": {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/docs/ROLLBACK.md",
+      "label": {
+        "en": "Rollback guide",
+        "zh": "回滾指南"
+      }
+    },
+    "steps": [
+      {
+        "title": {
+          "en": "Clone and configure",
+          "zh": "Clone 並填寫設定"
+        },
+        "body": {
+          "en": "machine.env holds non-secret settings. For Telegram, also copy machine.env.secrets.example to machine.env.secrets and put the bot tokens there; that file stays out of git.",
+          "zh": "machine.env 放非機密設定。要用 Telegram 的話，再把 machine.env.secrets.example 複製成 machine.env.secrets，bot token 放在那裡，這個檔案不進 git。"
+        },
+        "code": "git clone https://github.com/teddashh/openclaw-hermes-watcher\ncd openclaw-hermes-watcher\ncp config/machine.env.example config/machine.env\n$EDITOR config/machine.env"
+      },
+      {
+        "title": {
+          "en": "Run the installer",
+          "zh": "執行安裝"
+        },
+        "body": {
+          "en": "Steps 00 to 11 run in order and are safe to re-run. It asks for sudo to set chattr, and the first Hermes install takes 10 to 20 minutes.",
+          "zh": "依序執行 00 到 11 步，可以放心重跑。設定 chattr 時會要求 sudo，第一次安裝 Hermes 約需 10 到 20 分鐘。"
+        },
+        "code": "bash scripts/all.sh"
+      },
+      {
+        "title": {
+          "en": "Verify",
+          "zh": "驗證"
+        },
+        "body": {
+          "en": "all.sh already runs the smoke test once. Re-run it any time: 41 checks, non-zero exit on any failure.",
+          "zh": "all.sh 已經跑過一次冒煙測試，之後隨時可以重跑：共 41 項檢查，只要有一項失敗就以非零狀態結束。"
+        },
+        "code": "bash scripts/07-smoke-test.sh"
+      }
+    ]
+  },
+  "status": {
+    "kicker": {
+      "en": "Honest status",
+      "zh": "誠實的現況"
+    },
+    "title": {
+      "en": "Where it stands.",
+      "zh": "目前的樣子。"
+    },
+    "intro": {
+      "en": "A template extracted from a working deployment and migration-tested on a real host since v0.1.4. No changes on main since May 2026.",
+      "zh": "從實際運作的部署抽出來的範本，v0.1.4 起在真實主機上做過遷移測試。2026 年 5 月以後，main 分支沒有變動。"
+    },
+    "works": [
+      {
+        "en": "One-command install with scripts/all.sh, re-runnable on an existing host",
+        "zh": "scripts/all.sh 一鍵安裝，可以在既有主機上重跑"
+      },
+      {
+        "en": "Immutable baseline, 60-second watcher, and five heartbeat-checked jobs",
+        "zh": "不可變基線、每 60 秒的 watcher，以及五個具心跳檢查的排程工作"
+      },
+      {
+        "en": "Optional Telegram bots, separate for the maintainer and for Hermes",
+        "zh": "可選的 Telegram bot，維護用的 subagent 與 Hermes 各自一個"
+      },
+      {
+        "en": "A 41-check smoke test after install",
+        "zh": "安裝後有 41 項檢查的冒煙測試"
+      },
+      {
+        "en": "CI runs shell syntax checks, a PII guard, and a template-render smoke test",
+        "zh": "CI 會跑 shell 語法檢查、PII 防護與範本渲染冒煙測試"
+      }
+    ],
+    "limits": [
+      {
+        "en": "Linux only, and OpenClaw must already be installed and working",
+        "zh": "只支援 Linux，而且要先有正常運作的 OpenClaw"
+      },
+      {
+        "en": "Agents run as the installing user and the installer leaves sudo alone, so chattr +i holds only if that user needs a password for sudo",
+        "zh": "agent 和安裝時用的是同一個 Linux 帳號，安裝程式也不會動 sudo 設定；只有這個帳號執行 sudo 需要密碼時，chattr +i 才擋得住 agent"
+      },
+      {
+        "en": "8 of the 11 forbidden actions in the policy, stopping the watcher among them, have no deterministic check yet (marked todo_implement)",
+        "zh": "政策列出的 11 項禁止行為，有 8 項還沒有確定性的檢查（標為 todo_implement），停掉 watcher 就是其中之一"
+      },
+      {
+        "en": "Config paths were verified against OpenClaw v2026.5.x. On 2026.5.20 or later, talk-helpers on main finds only the two default agents; the fix is in open pull request #1",
+        "zh": "設定路徑是以 OpenClaw v2026.5.x 驗證的。2026.5.20 以後，main 分支的 talk-helpers 只找得到兩個預設 agent，修正還在尚未合併的 PR #1"
+      },
+      {
+        "en": "The daily-study prompt spells out /home/ubuntu paths, so another Linux user needs a template edit",
+        "zh": "每日研究的 prompt 直接寫死 /home/ubuntu 路徑，換成其他 Linux 帳號就得改範本"
+      },
+      {
+        "en": "Patrol alerts reach Telegram through an HTTP proxy at 127.0.0.1:8118 by default, and blanking the setting does not turn it off, so a host without that proxy only logs alerts to a file",
+        "zh": "巡邏警報預設經過 127.0.0.1:8118 的 HTTP proxy 送到 Telegram，把設定清空也關不掉；主機上沒有這個 proxy 的話，警報只會寫進記錄檔"
+      },
+      {
+        "en": "The 30-minute, 30-turn budget is a prompt instruction, not a hard limit, and there are no measured token-cost figures",
+        "zh": "30 分鐘、30 輪的預算只是 prompt 裡的指示，不是硬性限制，也沒有實測的 token 用量數字"
+      }
+    ]
+  },
+  "facts": [
+    {
+      "label": {
+        "en": "Version",
+        "zh": "版本"
+      },
+      "value": "v0.1.7"
+    },
+    {
+      "label": {
+        "en": "License",
+        "zh": "授權"
+      },
+      "value": "Apache-2.0"
+    },
+    {
+      "label": {
+        "en": "Stack",
+        "zh": "技術"
+      },
+      "value": "Bash · systemd · YAML"
+    },
+    {
+      "label": {
+        "en": "Requires",
+        "zh": "需求"
+      },
+      "value": {
+        "en": "Linux + OpenClaw",
+        "zh": "Linux + OpenClaw"
+      }
+    },
+    {
+      "label": {
+        "en": "Last commit",
+        "zh": "最後提交"
+      },
+      "value": "2026-05-07"
+    },
+    {
+      "label": {
+        "en": "Verified",
+        "zh": "查核日期"
+      },
+      "value": "2026-09-30"
+    }
+  ],
+  "links": [
+    {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher/releases",
+      "label": {
+        "en": "Releases",
+        "zh": "版本"
+      }
+    },
+    {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/ARCHITECTURE.md",
+      "label": {
+        "en": "Architecture",
+        "zh": "架構文件"
+      }
+    },
+    {
+      "href": "https://github.com/teddashh/openclaw-hermes-watcher/blob/main/README.zh-TW.md",
+      "label": {
+        "en": "中文 README",
+        "zh": "中文 README"
+      }
+    }
+  ]
+}
