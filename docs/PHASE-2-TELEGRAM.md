@@ -9,7 +9,7 @@ OpenClaw has its own Telegram gateway with one bot per agent (Phase 1.5 adds one
 The split matters because:
 
 - **Provenance.** When Hermes replies, it's clear it's *Hermes* talking, not the maintainer. Different bot username = different "voice" in your Telegram client.
-- **Authority.** Hermes by SOUL contract does not push autonomously. Its bot is for two-way chat (you ask, it answers). The maintainer's bot is for cross-patrol alerts (Phase 2.5). Different concerns, different bots.
+- **Authority.** Hermes by SOUL contract does not push autonomously. Its bot is for two-way chat (you ask, it answers), with one exception: the daily-study patrol alert when a maintainer job's heartbeat is stale (Phase 2.5). The four maintainer jobs alert through the maintainer's bot.
 - **Failure isolation.** If Hermes's gateway crashes, the maintainer's bot still works (and vice versa).
 
 ## Pre-conditions

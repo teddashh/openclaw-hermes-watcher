@@ -83,10 +83,12 @@ hermes_may_not:
     - gh_cli_write                                       # no PRs/issues/comments via Hermes
     - openclaw_*                                         # cannot drive OpenClaw directly; talks via journal/inbox
     - any_command_outside_hermes_workspace               # Hermes's shell tool is scoped to ~/.hermes/
-    # Phase 2 (Hermes own gateway): if you enabled it, autonomous Telegram push remains
-    # forbidden by SOUL.md: the gateway is for replies to operator messages, not for
-    # Hermes to ping autonomously. Cross-patrol cron alerts use a separate mechanism
-    # (heartbeat-patrol script + the maintainer's bot), not Hermes's gateway.
+    # Phase 2 (Hermes own gateway): autonomous Telegram push stays forbidden by
+    # SOUL.md. The gateway is for replies to operator messages. The one exception
+    # is the daily-study patrol: if a maintainer job's heartbeat is stale, Hermes
+    # may send that alert through this gateway, or append a line to
+    # ~/.hermes/heartbeats/_alerts.log when no chat ID is configured. The four
+    # maintainer jobs alert through heartbeat-patrol and the maintainer's bot.
 
   spawn:
     - shell_subprocess_outside_hermes                    # Hermes's delegate is in-process; cannot fork shells
