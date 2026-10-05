@@ -123,11 +123,11 @@ Five scheduled jobs run regularly:
 - `hermes_monthly_compress` (maintainer, 05:30 local 1st of month)
 - `openclaw-daily-study` (Hermes-side, 10:00 UTC daily)
 
-Each, as its first step, writes a heartbeat file with its current timestamp + interval + grace. Then it patrols the four other heartbeats; if any is stale beyond `interval + grace`, it sends a Telegram alert via the configured bot (default: maintainer's `@*_watchbot`).
+Each, as its first step, writes a heartbeat file with its current timestamp + interval + grace. Then it patrols the four other heartbeats; if any is stale beyond `interval + grace`, it raises an alert. The four maintainer jobs send that Telegram message through `heartbeat-patrol` and the configured bot (default: the maintainer's `@*_watchbot`). The Hermes job sends it through its own Telegram gateway, or appends a line to `~/.hermes/heartbeats/_alerts.log` when no chat ID is configured.
 
 This is a deterministic dead-man-switch: a healthy system is silent; only a missed run produces an alert. There's no "default broken" alarm to clear: *fresh heartbeat* is the dismissal, and every job writes one each time it runs.
 
-The alerter (`heartbeat-patrol`) is pure bash, deterministic, with a hard-coded job catalog. If you add a new cron, add it to the catalog in `lib/heartbeat-patrol.sh` (and re-deploy via `scripts/06-cron-setup.sh`).
+The maintainer alerter (`heartbeat-patrol`) is pure bash, deterministic, with a hard-coded job catalog. If you add a new cron, add it to the catalog in `lib/heartbeat-patrol.sh` (and re-deploy via `scripts/06-cron-setup.sh`). The Hermes job does not call that script.
 
 ## What lives where on disk
 

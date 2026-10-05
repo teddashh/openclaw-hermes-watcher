@@ -2,15 +2,17 @@
 # 06-cron-setup.sh: install heartbeat-patrol + 4 maintainer crons + Hermes
 # daily-study cron.
 #
-# Each cron prompts the agent to call heartbeat-patrol FIRST (before doing its
-# task), so the heartbeat lands even if the LLM hits turn-limit. Heartbeat-
-# patrol then deterministically reads peer heartbeats and Telegram-alerts via
-# the configured bot if any peer is stale beyond interval+grace.
+# The four maintainer crons prompt the agent to call heartbeat-patrol FIRST
+# (before doing its task), so the heartbeat lands even if the LLM hits
+# turn-limit. Heartbeat-patrol then reads peer heartbeats and sends a
+# Telegram alert via the configured bot if any peer is stale beyond
+# interval+grace.
 #
 # The Hermes-side cron (openclaw-daily-study) runs in Hermes's own scheduler
 # rather than OpenClaw cron, because Hermes's shell tool is chroot-jailed and
-# can only write its heartbeat via filesystem_write; the prompt instructs it
-# accordingly.
+# can only write its heartbeat via filesystem_write. Its prompt has it patrol
+# the maintainer heartbeats with file tools and, when a chat ID is configured,
+# send a stale-heartbeat alert through Hermes's own Telegram gateway.
 #
 # Idempotent.
 
