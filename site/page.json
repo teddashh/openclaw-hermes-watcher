@@ -669,12 +669,12 @@
     {
       "id": "weekday",
       "heading": {
-        "en": "One study task per weekday",
-        "zh": "每個星期一天一個題"
+        "en": "One study task a day",
+        "zh": "一天只研究一題"
       },
       "intro": {
-        "en": "The daily study prompt assigns the task from the UTC weekday. Sunday writes the heartbeat and skips the study.",
-        "zh": "每日研究的 prompt 依 UTC 星期指定題目。週日只寫心跳，不做研究。"
+        "en": "The prompt picks the task from the UTC weekday. Sunday only writes the heartbeat.",
+        "zh": "prompt 用 UTC 星期決定題目。週日只寫心跳。"
       },
       "after": "how",
       "spec": {
@@ -703,8 +703,8 @@
             "zh": "看星期"
           },
           "note": {
-            "en": "The prompt tells Hermes to run date -u, because the template cannot expand a shell date.",
-            "zh": "prompt 請 Hermes 執行 date -u，因為範本無法展開 shell 的日期。"
+            "en": "The prompt asks Hermes to check the UTC weekday itself.",
+            "zh": "prompt 請 Hermes 自己看 UTC 是星期幾。"
           },
           "tone": "neutral",
           "icon": "clock"
@@ -715,8 +715,8 @@
             "zh": "今日題目"
           },
           "note": {
-            "en": "Monday through Saturday each have one task, and the lanes are those six tasks in order.",
-            "zh": "週一到週六各有一個題目，圖上的六個路線依序就是這六題。"
+            "en": "Monday through Saturday each have their own task, matching those six lanes in order.",
+            "zh": "週一到週六各一題，順序跟那六條路一樣。"
           },
           "tone": "accent",
           "icon": "route"
@@ -725,31 +725,31 @@
       "ticks": [
         {
           "en": "weekday read",
-          "zh": "已讀取星期"
+          "zh": "星期讀到了"
         },
         {
-          "en": "one task for that day",
-          "zh": "當天只有一題"
+          "en": "one task today",
+          "zh": "今天只有一題"
         },
         {
-          "en": "sunday stays idle",
-          "zh": "週日不研究"
+          "en": "Sunday skips study",
+          "zh": "週日不做研究"
         }
       ],
       "caption": {
-        "en": "Hermes reads the UTC weekday and does one task: Monday service logs, Tuesday upstream commits, Wednesday community skills and plugins, Thursday draft packs, Friday pack review, and Saturday a memory prune. Sunday writes the heartbeat and skips the study. The prompt also asks for no more than 30 minutes or 30 turns, and the scripts do not enforce that cap.",
-        "zh": "Hermes 讀取 UTC 星期後做一題：週一服務日誌、週二上游 commit、週三社群 skill 與 plugin、週四起草 pack、週五檢查 pack、週六整理記憶。週日寫心跳並跳過研究。prompt 另外要求不超過 30 分鐘或 30 輪，那是指示，不是硬性停止。"
+        "en": "The 30 minute and 30 turn cap is only a line in the prompt.",
+        "zh": "30 分鐘和 30 輪只是 prompt 裡的一行，腳本不會擋。"
       }
     },
     {
       "id": "watch",
       "heading": {
-        "en": "What the watcher checks",
-        "zh": "watcher 每輪檢查什麼"
+        "en": "Three checks a minute",
+        "zh": "每分鐘三項檢查"
       },
       "intro": {
-        "en": "A systemd user unit runs lib/watcher.sh every 60 seconds. It is Bash, not a model.",
-        "zh": "systemd user unit 每 60 秒執行 lib/watcher.sh。它是 Bash，不是模型。"
+        "en": "A small Bash script that systemd runs every minute.",
+        "zh": "一支小 Bash 腳本，systemd 每一分鐘叫它跑一次。"
       },
       "after": "features",
       "spec": {
@@ -759,12 +759,12 @@
           ],
           [
             1
+          ],
+          [
+            2
           ]
         ],
         "core": 1,
-        "sinks": [
-          2
-        ],
         "loop": true
       },
       "steps": [
@@ -774,8 +774,8 @@
             "zh": "六十秒"
           },
           "note": {
-            "en": "INTERVAL_SEC defaults to 60, and the unit restarts on failure.",
-            "zh": "INTERVAL_SEC 預設 60，單元失敗時會再啟動。"
+            "en": "If the script fails, systemd starts it again.",
+            "zh": "腳本失敗的話，systemd 會再把它叫起來。"
           },
           "tone": "neutral",
           "icon": "clock"
@@ -786,8 +786,8 @@
             "zh": "三項檢查"
           },
           "note": {
-            "en": "Each pass checks the immutable flag, the SHA-256 list and its meta hash, and the gateway process.",
-            "zh": "每一輪檢查不可變旗標、SHA-256 清單與其 meta 雜湊，以及 gateway 程序。"
+            "en": "One pass checks that the files are still locked, that the hash list matches, and that the gateway process is up.",
+            "zh": "一輪要看檔案有沒有鎖著、雜湊清單對不對，還有 gateway 行程在不在。"
           },
           "tone": "accent",
           "icon": "shield"
@@ -798,8 +798,8 @@
             "zh": "紀錄一列"
           },
           "note": {
-            "en": "Anomalies append one JSONL line, and watcher_heartbeat is appended about once an hour.",
-            "zh": "異常會追加一列 JSONL，watcher_heartbeat 大約每小時追加一次。"
+            "en": "Something wrong adds one line to the journal.",
+            "zh": "有問題就在紀錄裡多寫一列。"
           },
           "tone": "neutral",
           "icon": "ledger"
@@ -807,32 +807,32 @@
       ],
       "ticks": [
         {
-          "en": "flags and hashes checked",
-          "zh": "已檢查旗標與雜湊"
+          "en": "locks checked",
+          "zh": "鎖看過了"
         },
         {
-          "en": "gateway process checked",
-          "zh": "已檢查 gateway"
+          "en": "hashes checked",
+          "zh": "雜湊對過了"
         },
         {
-          "en": "journal on fault or hour",
-          "zh": "異常或每小時才寫"
+          "en": "gateway checked",
+          "zh": "gateway 看過了"
         }
       ],
       "caption": {
-        "en": "Every 60 seconds the watcher checks that baseline files still have the immutable flag, that their SHA-256 hashes match, including the meta hash of the hash list, and that the OpenClaw gateway process is running. An anomaly appends one line to evolution-journal.jsonl. A watcher_heartbeat line is appended about once an hour. A clean pass between those hours adds nothing.",
-        "zh": "每 60 秒，watcher 檢查基線檔是否仍有不可變旗標、SHA-256 是否相符（含雜湊清單的 meta 雜湊），以及 OpenClaw gateway 程序是否在跑。異常會往 evolution-journal.jsonl 追加一列。watcher_heartbeat 大約每小時追加一次。兩次心跳之間若一切正常，就不會多寫。"
+        "en": "A clean minute writes nothing, except a heartbeat about once an hour.",
+        "zh": "平常什麼都不寫，大約一小時才補一列心跳。"
       }
     },
     {
       "id": "heartbeat",
       "heading": {
-        "en": "Silence unless a job is late",
-        "zh": "沒遲到就保持安靜"
+        "en": "Only a late job alerts",
+        "zh": "沒遲到就不出聲"
       },
       "intro": {
-        "en": "Each of the five scheduled jobs writes its own heartbeat first, then checks the other four.",
-        "zh": "五個排程工作先寫自己的心跳，再檢查另外四個。"
+        "en": "Five jobs each write a heartbeat, then look at the other four.",
+        "zh": "五個工作先寫自己的心跳，再看另外四個。"
       },
       "after": "features",
       "spec": {
@@ -857,8 +857,8 @@
             "zh": "寫下心跳"
           },
           "note": {
-            "en": "The file stores the time, the interval, and the grace.",
-            "zh": "檔案記下時間、週期與寬限。"
+            "en": "Time, interval, and grace all go into that file.",
+            "zh": "時間、週期和寬限都寫進那個檔。"
           },
           "tone": "neutral",
           "icon": "clock"
@@ -869,8 +869,8 @@
             "zh": "檢查同伴"
           },
           "note": {
-            "en": "A job counts as stale only after its interval plus its grace, and a fresh set sends nothing.",
-            "zh": "超過週期加寬限才算逾時，四個都還新的話就什麼都不發。"
+            "en": "Late starts after the interval plus the grace, and four fresh peers mean it stays quiet.",
+            "zh": "超過週期加寬限才算晚，四個都還新就繼續安靜。"
           },
           "tone": "accent",
           "icon": "search"
@@ -881,8 +881,8 @@
             "zh": "警報出口"
           },
           "note": {
-            "en": "Maintainer jobs use heartbeat-patrol, and the study job uses its gateway or a local alerts file.",
-            "zh": "維護工作走 heartbeat-patrol，研究工作走自己的 gateway 或寫進本地警報檔。"
+            "en": "An alert goes to a chat when one is set, and otherwise it stays in a local file.",
+            "zh": "有設好聊天就發過去，沒有的話就留在本機檔案。"
           },
           "tone": "warn",
           "icon": "bell"
@@ -890,32 +890,32 @@
       ],
       "ticks": [
         {
-          "en": "heartbeat written",
-          "zh": "心跳已寫入"
+          "en": "beat written",
+          "zh": "心跳寫好了"
         },
         {
-          "en": "four peers checked",
-          "zh": "已檢查四個同伴"
+          "en": "peers checked",
+          "zh": "同伴看過了"
         },
         {
-          "en": "quiet when all fresh",
-          "zh": "都沒逾時就安靜"
+          "en": "fresh means quiet",
+          "zh": "都新就安靜"
         }
       ],
       "caption": {
-        "en": "The five jobs are hermes_daily_doctor, hermes_upstream_watch, hermes_weekly_review, hermes_monthly_compress, and hermes_daily_study. Each writes a heartbeat, then checks the other four, and alerts only when one is past its interval plus grace. Maintainer alerts go through heartbeat-patrol. The study job uses its own gateway, or appends to a local alerts file when no chat is set.",
-        "zh": "五個工作是 hermes_daily_doctor、hermes_upstream_watch、hermes_weekly_review、hermes_monthly_compress 與 hermes_daily_study。每個先寫心跳，再檢查另外四個，只有超過週期加寬限才警報。維護工作的警報走 heartbeat-patrol。研究工作走自己的 gateway；沒有設定聊天對象時，改追加到本地警報檔。"
+        "en": "They watch each other: the daily doctor, the upstream watch, the weekly review, the monthly compress, and the daily study.",
+        "zh": "互相看的是這五個：每天的 doctor、上游監視、每週回顧、每月壓縮，還有每天的研究。"
       }
     },
     {
       "id": "packs",
       "heading": {
-        "en": "Which packs can apply",
-        "zh": "哪些 pack 可以套用"
+        "en": "Some packs can apply",
+        "zh": "有的 pack 能套用"
       },
       "intro": {
-        "en": "Five pack kinds live in the policy template, and the main agent, not this repository, counts the weekly budget.",
-        "zh": "五種 pack 寫在政策範本裡，每週額度由主 agent 計算，不是由這個 repo 計算。"
+        "en": "The main agent counts the weekly budget.",
+        "zh": "每週額度是主 agent 在算的。"
       },
       "after": "features",
       "spec": {
@@ -945,7 +945,7 @@
           },
           "note": {
             "en": "Hermes writes a manifest under upgrade-packs/inbox and cannot apply it.",
-            "zh": "Hermes 把清單寫進 upgrade-packs/inbox，但不能套用。"
+            "zh": "Hermes 把清單寫到 upgrade-packs/inbox，自己不能套。"
           },
           "tone": "neutral",
           "icon": "doc"
@@ -953,11 +953,11 @@
         {
           "title": {
             "en": "Kind and tier",
-            "zh": "類型與額度"
+            "zh": "類型和額度"
           },
           "note": {
-            "en": "Low risk allows 5 a week, medium 2, and high 1, and only skill, plugin, and upstream patch may apply in the window.",
-            "zh": "低風險每週 5、中風險 2、高風險 1，而且只有 skill、plugin 與上游 patch 能在時窗內套用。"
+            "en": "A week allows 5 low, 2 medium, and 1 high. Only skill, plugin, and upstream patch packs can go in without you.",
+            "zh": "一週低 5、中 2、高 1。不必等你點頭的，只有 skill、plugin 和上游 patch。"
           },
           "tone": "accent",
           "icon": "route"
@@ -965,32 +965,32 @@
       ],
       "ticks": [
         {
-          "en": "manifest drafted",
-          "zh": "清單已起草"
+          "en": "draft written",
+          "zh": "草稿寫好了"
         },
         {
-          "en": "kind looked up",
-          "zh": "已查過類型"
+          "en": "kind checked",
+          "zh": "類型看過了"
         },
         {
-          "en": "budget counted elsewhere",
-          "zh": "額度由別處計算"
+          "en": "budget counted outside",
+          "zh": "額度在別處算"
         }
       ],
       "caption": {
-        "en": "A draft pack names one of five kinds: Skill, Plugin, Patch, Custom, or Config. The policy lets the main agent apply a skill, a plugin, or an upstream patch inside the maintenance window, within a weekly budget of 5 low risk, 2 medium risk, and 1 high risk. Custom work and config changes wait for the operator. Forbidden autonomous changes, including hermes update, stay at 0. The main agent does the counting.",
-        "zh": "一份草稿 pack 會指名五種之一：Skill、Plugin、Patch、Custom 或 Config。政策允許主 agent 在維護時窗內套用 skill、plugin 或上游 patch，每週額度是低風險 5、中風險 2、高風險 1。自行設計的變更與設定修改要等管理者。禁止自主執行的變更（包含 hermes update）額度是 0。計數的是主 agent。"
+        "en": "Forbidden changes such as hermes update have a budget of 0.",
+        "zh": "hermes update 這類禁止的變更，額度是 0。"
       }
     },
     {
       "id": "roles",
       "heading": {
-        "en": "Who is allowed to decide",
-        "zh": "誰可以做決定"
+        "en": "You still approve",
+        "zh": "高風險要你點頭"
       },
       "intro": {
-        "en": "Hermes drafts, the guardian flags, and the watcher checks files. High risk changes wait for the operator.",
-        "zh": "Hermes 負責起草，守護者負責標記，watcher 檢查檔案。高風險變更要等管理者。"
+        "en": "Hermes can draft, the guardian can flag, and the watcher only checks files.",
+        "zh": "Hermes 能起草，守護者能標記，看守程式只檢查檔案。"
       },
       "after": "architecture",
       "spec": {
@@ -1010,12 +1010,12 @@
       "zones": {
         "en": [
           "Agents",
-          "Approval line",
+          "Needs you",
           "Operator"
         ],
         "zh": [
-          "Agent 側",
-          "核准界線",
+          "Agent 這邊",
+          "要你點頭",
           "管理者"
         ]
       },
@@ -1026,8 +1026,8 @@
             "zh": "Hermes"
           },
           "note": {
-            "en": "The study profile drafts packs and cannot apply them.",
-            "zh": "研究用的 profile 只起草 pack，不能套用。"
+            "en": "The study profile can write a pack, and that is where it stops.",
+            "zh": "研究用的 profile 寫得出 pack，寫完就停。"
           },
           "tone": "neutral",
           "icon": "doc"
@@ -1038,8 +1038,8 @@
             "zh": "守護者"
           },
           "note": {
-            "en": "hermes-maintainer reports doctor, upstream, review, and compress, and it cannot run hermes update.",
-            "zh": "hermes-maintainer 回報 doctor、上游、每週回顧與壓縮，但不能執行 hermes update。"
+            "en": "hermes-maintainer can report doctor, upstream, review, and compress, and hermes update stays yours.",
+            "zh": "hermes-maintainer 回報 doctor、上游、回顧和壓縮，hermes update 留在你手上。"
           },
           "tone": "neutral",
           "icon": "eye"
@@ -1050,8 +1050,8 @@
             "zh": "看守程式"
           },
           "note": {
-            "en": "lib/watcher.sh is Bash under a systemd user unit.",
-            "zh": "lib/watcher.sh 是 systemd user unit 底下的 Bash。"
+            "en": "It can look at the frozen files, and it cannot change them.",
+            "zh": "它看得到鎖住的檔，但改不了。"
           },
           "tone": "info",
           "icon": "shield"
@@ -1062,8 +1062,8 @@
             "zh": "管理者"
           },
           "note": {
-            "en": "The operator holds sudo and chattr, runs hermes update, and approves custom and config packs.",
-            "zh": "管理者掌握 sudo 與 chattr，執行 hermes update，並核准自訂與設定 pack。"
+            "en": "sudo and chattr stay with you, along with any custom or config pack.",
+            "zh": "sudo、chattr，還有自訂和設定 pack，都等你點頭。"
           },
           "tone": "accent",
           "icon": "user"
@@ -1071,32 +1071,32 @@
       ],
       "ticks": [
         {
-          "en": "draft stays a file",
-          "zh": "草稿只留在檔案"
+          "en": "draft is a file",
+          "zh": "草稿只是檔"
         },
         {
-          "en": "watcher is plain bash",
-          "zh": "watcher 是純 Bash"
+          "en": "watcher only reads",
+          "zh": "看守程式只讀"
         },
         {
-          "en": "operator holds sudo",
-          "zh": "管理者掌握 sudo"
+          "en": "sudo stays with you",
+          "zh": "sudo 在你手上"
         }
       ],
       "caption": {
-        "en": "Hermes can draft a pack and cannot apply one. The hermes-maintainer subagent can report and cannot upgrade Hermes. The watcher checks immutable files and hashes. Across the approval line, the operator holds sudo and chattr, runs hermes update, and approves synthesize_custom and config_change packs.",
-        "zh": "Hermes 可以起草 pack，不能套用。hermes-maintainer 這個 subagent 可以回報，不能升級 Hermes。watcher 檢查不可變檔與雜湊。核准界線的另一側，管理者掌握 sudo 與 chattr、執行 hermes update，並核准 synthesize_custom 與 config_change。"
+        "en": "A draft stays a draft until you approve it.",
+        "zh": "草稿就只是草稿，要你點頭才算數。"
       }
     },
     {
       "id": "install",
       "heading": {
-        "en": "What the installer freezes",
-        "zh": "安裝程式凍結什麼"
+        "en": "Install, then lock files",
+        "zh": "安裝時把檔鎖上"
       },
       "intro": {
-        "en": "scripts/all.sh is the installer for a host that already has OpenClaw. It runs steps 00 through 11 and can be re-run.",
-        "zh": "scripts/all.sh 是裝在已有 OpenClaw 的主機上的安裝程式。它跑 00 到 11，而且可以重跑。"
+        "en": "Run the installer on a host that already has OpenClaw. Running it again is safe.",
+        "zh": "在已經有 OpenClaw 的主機上跑安裝程式。再跑一次也沒關係。"
       },
       "after": "start",
       "spec": {
@@ -1123,20 +1123,20 @@
             "zh": "填寫設定"
           },
           "note": {
-            "en": "machine.env holds non-secret settings, and bot tokens stay in a separate ignored file.",
-            "zh": "machine.env 放非機密設定，bot token 留在另一個不進 git 的檔。"
+            "en": "Non-secret settings go in machine.env, and bot tokens live in a separate file that git ignores.",
+            "zh": "非機密的設定放 machine.env，bot token 放另一個 git 會忽略的檔。"
           },
           "tone": "neutral",
           "icon": "doc"
         },
         {
           "title": {
-            "en": "Run all.sh",
+            "en": "Run installer",
             "zh": "執行安裝"
           },
           "note": {
-            "en": "It renders templates, installs Hermes when missing, and registers the maintainer.",
-            "zh": "它渲染範本，缺少時安裝 Hermes，並註冊維護用的 subagent。"
+            "en": "Templates get filled in, Hermes is installed when it is missing, and the maintainer is registered.",
+            "zh": "先把範本填好，沒有 Hermes 才裝，再註冊維護用的 subagent。"
           },
           "tone": "neutral",
           "icon": "gear"
@@ -1147,8 +1147,8 @@
             "zh": "凍結檔案"
           },
           "note": {
-            "en": "sudo chattr +i locks the policy, permissions, mission files, and the watcher script.",
-            "zh": "sudo chattr +i 鎖住政策、權限、任務檔與 watcher 腳本。"
+            "en": "The policy, the permissions, the mission, and the watcher files are locked so they cannot be changed.",
+            "zh": "政策、權限、任務和看守腳本會鎖上，之後就改不了。"
           },
           "tone": "accent",
           "icon": "lock"
@@ -1159,8 +1159,8 @@
             "zh": "冒煙測試"
           },
           "note": {
-            "en": "scripts/07-smoke-test.sh runs 41 checks and exits non zero if any fail.",
-            "zh": "scripts/07-smoke-test.sh 跑 41 項檢查，任一失敗就以非零結束。"
+            "en": "It runs 41 checks.",
+            "zh": "一共檢查 41 項。"
           },
           "tone": "info",
           "icon": "check"
@@ -1168,21 +1168,21 @@
       ],
       "ticks": [
         {
-          "en": "templates rendered",
-          "zh": "範本已渲染"
+          "en": "templates filled",
+          "zh": "範本填好了"
         },
         {
-          "en": "baseline frozen",
-          "zh": "基線已凍結"
+          "en": "files frozen",
+          "zh": "檔案鎖上了"
         },
         {
-          "en": "checks finished",
-          "zh": "檢查已跑完"
+          "en": "smoke test done",
+          "zh": "冒煙測完了"
         }
       ],
       "caption": {
-        "en": "On a host that already runs OpenClaw, you fill machine.env, run scripts/all.sh, and the installer freezes the policy baseline with chattr +i. Steps 00 through 11 are safe to re-run. The smoke test is 41 checks. Telegram bots are optional, and their tokens stay out of git.",
-        "zh": "在已經跑著 OpenClaw 的主機上填好 machine.env、執行 scripts/all.sh，安裝程式會用 chattr +i 凍結政策基線。00 到 11 可以重跑。冒煙測試是 41 項檢查。Telegram bot 可選，token 不進 git。"
+        "en": "The last three checks only warn. A real failure still exits non-zero.",
+        "zh": "最後三項只會警告，真的失敗才會以非零結束。"
       }
     }
   ]
