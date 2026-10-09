@@ -48,8 +48,14 @@ HELPER_EOF
 info "Generating talk-* wrappers in $GENERATED_DIR and symlinking to $BIN_DIR..."
 
 # Discover OpenClaw agents via openclaw agents list --json (with text fallback).
-agents_json=$(openclaw agents list --json 2>/dev/null || echo '{}')
-agent_names=$(echo "$agents_json" | jq -r '.agents // [] | map(.name // .id) | .[]' 2>/dev/null || true)
+# Handles both old `{"agents":[...]}` and new flat `[...]` formats (OpenClaw
+# 2026.5.20+ returns the flat array directly).
+agents_json=$(openclaw agents list --json 2>/dev/null || echo '[]')
+agent_names=$(echo "$agents_json" | jq -r '
+  (if type == "array" then . else (.agents // []) end)
+  | map(.name // .id)
+  | .[]
+' 2>/dev/null || true)
 
 if [ -z "$agent_names" ]; then
     warn "Could not parse 'openclaw agents list --json', falling back to defaults"
